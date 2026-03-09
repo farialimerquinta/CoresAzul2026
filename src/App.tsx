@@ -34,6 +34,7 @@ export default function App() {
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingLogoOption, setIsUploadingLogoOption] = useState(false);
   const [isVotingView, setIsVotingView] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [tempNickname, setTempNickname] = useState('');
   const [tempPhoto, setTempPhoto] = useState<string | null>(null);
   const [tempCourtPosition, setTempCourtPosition] = useState('');
@@ -121,14 +122,18 @@ export default function App() {
   };
 
   const handleSavePlayer = async () => {
-    if (!editPlayer) return;
+    if (!editPlayer || isSaving) return;
 
+    setIsSaving(true);
     try {
-      await fetch(`/api/players/${editPlayer.id}`, {
+      // Only send photo if it's different from the original to save bandwidth
+      const photoToSend = tempPhoto !== editPlayer.photo ? tempPhoto : undefined;
+
+      const response = await fetch(`/api/players/${editPlayer.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          photo: tempPhoto !== null ? tempPhoto : undefined, 
+          photo: photoToSend, 
           nickname: tempNickname,
           court_position: tempCourtPosition,
           availability_21: tempAvailability21,
@@ -136,8 +141,16 @@ export default function App() {
           availability_28: tempAvailability28
         })
       });
-      fetchData();
+
+      if (!response.ok) throw new Error('Failed to save');
+
+      // Close modal immediately for better UX
       setEditPlayer(null);
+      
+      // Then refresh data in background
+      await fetchData();
+      
+      // Reset states
       setTempPhoto(null);
       setTempNickname('');
       setTempCourtPosition('');
@@ -146,6 +159,9 @@ export default function App() {
       setTempAvailability28('');
     } catch (error) {
       console.error('Error saving player:', error);
+      alert('Erro ao salvar. Tente novamente.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -498,9 +514,21 @@ export default function App() {
                   </button>
                   <button 
                     onClick={handleSavePlayer}
-                    className="flex-[2] bg-white text-[#0088cc] py-5 rounded-3xl font-black uppercase tracking-widest hover:bg-white/90 active:scale-[0.98] transition-all shadow-2xl"
+                    disabled={isSaving}
+                    className={`flex-[2] py-5 rounded-3xl font-black uppercase tracking-widest transition-all shadow-2xl flex items-center justify-center gap-2 ${
+                      isSaving 
+                        ? 'bg-white/20 text-white/40 cursor-not-allowed' 
+                        : 'bg-white text-[#0088cc] hover:bg-white/90 active:scale-[0.98]'
+                    }`}
                   >
-                    Salvar Alterações
+                    {isSaving ? (
+                      <>
+                        <div className="w-5 h-5 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+                        Salvando...
+                      </>
+                    ) : (
+                      'Salvar Alterações'
+                    )}
                   </button>
                 </div>
               </div>
