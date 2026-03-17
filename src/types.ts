@@ -43,4 +43,5 @@ export interface ConfrontoJogador {
   set3_j1: number | null;
   set3_j2: number | null;
   vencedor: 'jogador1' | 'jogador2' | null;
+  wo_vencedor: 'jogador1' | 'jogador2' | null;
 }

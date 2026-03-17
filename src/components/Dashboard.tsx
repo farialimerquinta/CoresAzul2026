@@ -35,41 +35,39 @@ const PlayerBox = ({ name = '', category, label, isDupla = false, teamName = '',
   
   return (
     <div className={`
-      relative flex items-center gap-3 p-3 rounded-[20px] border transition-all duration-300
-      bg-[#111827] ${colors.border} shadow-lg ${colors.shadow}
-      group hover:scale-[1.01] w-full
+      relative flex items-center gap-3 p-2.5 rounded-[18px] border transition-all duration-300
+      bg-[#0d121f] ${colors.border} shadow-md ${colors.shadow}
+      group hover:scale-[1.02] w-full
     `}>
       <div className={`
-        w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg shadow-inner
+        w-9 h-9 rounded-lg flex items-center justify-center font-black text-base shadow-inner
         ${colors.bg} text-white
       `}>
         {category}
       </div>
-      <div className="flex flex-col flex-1">
+      <div className="flex flex-col flex-1 min-w-0">
         {isAdmin ? (
           <input
             type="text"
             value={name || ''}
             onChange={(e) => onUpdate?.(e.target.value)}
-            className="bg-transparent border-none p-0 text-base font-black tracking-tight uppercase leading-tight focus:ring-0 w-full text-white"
+            className="bg-transparent border-none p-0 text-sm font-black tracking-tight uppercase leading-tight focus:ring-0 w-full text-white"
             placeholder="NOME DO TENISTA"
           />
         ) : (
           <>
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none">
+            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none truncate">
               {firstName}
             </span>
-            <span className="text-lg font-black tracking-tight uppercase leading-tight text-white">
+            <span className="text-base font-black tracking-tight uppercase leading-tight truncate text-yellow-400">
               {surname}
             </span>
           </>
         )}
       </div>
       
-      <div className="flex items-center gap-2">
-        <div className={`px-2 py-1 rounded-full ${colors.light} border ${colors.border} text-[7px] font-black ${colors.text} uppercase tracking-[0.2em]`}>
-          {isDupla ? 'DUPLA' : 'SIMPLES'}
-        </div>
+      <div className={`px-2 py-0.5 rounded-full ${colors.light} border ${colors.border} text-[6px] font-black ${colors.text} uppercase tracking-[0.2em] flex-shrink-0`}>
+        {isDupla ? 'DUPLA' : 'SIMPLES'}
       </div>
     </div>
   );
@@ -149,8 +147,6 @@ export default function Dashboard() {
     return {
       vitoriasCasa,
       vitoriasVisitante,
-      derrotasCasa: vitoriasVisitante,
-      derrotasVisitante: vitoriasCasa,
       setsCasa,
       setsVisitante,
       partidasJogadas,
@@ -522,6 +518,27 @@ export default function Dashboard() {
     if (!error) fetchData();
   };
 
+  const handleWO = async (confId: string, winner: 'jogador1' | 'jogador2') => {
+    if (profile?.role !== 'admin') return;
+
+    const updates = {
+      set1_j1: winner === 'jogador1' ? 6 : 0,
+      set1_j2: winner === 'jogador2' ? 6 : 0,
+      set2_j1: winner === 'jogador1' ? 6 : 0,
+      set2_j2: winner === 'jogador2' ? 6 : 0,
+      set3_j1: null,
+      set3_j2: null,
+      vencedor: winner
+    };
+
+    const { error } = await supabase
+      .from('confrontos_jogadores')
+      .update(updates)
+      .eq('id', confId);
+
+    if (!error) fetchData();
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center">
@@ -660,19 +677,9 @@ export default function Dashboard() {
                     <span className="text-4xl font-black text-emerald-500 italic">{stats.vitoriasVisitante}</span>
                   </div>
                   <div className="grid grid-cols-3 items-center text-center">
-                    <span className="text-4xl font-black text-rose-500 italic">{stats.derrotasCasa}</span>
-                    <span className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em]">Derrotas</span>
-                    <span className="text-4xl font-black text-rose-500 italic">{stats.derrotasVisitante}</span>
-                  </div>
-                  <div className="grid grid-cols-3 items-center text-center">
                     <span className="text-4xl font-black text-blue-500 italic">{stats.setsCasa}</span>
                     <span className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em]">Sets Vencidos</span>
                     <span className="text-4xl font-black text-blue-500 italic">{stats.setsVisitante}</span>
-                  </div>
-                  <div className="grid grid-cols-3 items-center text-center">
-                    <span className="text-4xl font-black text-slate-400 italic">{stats.setsVisitante}</span>
-                    <span className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em]">Sets Perdidos</span>
-                    <span className="text-4xl font-black text-slate-400 italic">{stats.setsCasa}</span>
                   </div>
                   <div className="grid grid-cols-3 items-center text-center">
                     <span className="text-4xl font-black text-white italic">{stats.partidasJogadas}</span>
@@ -778,9 +785,7 @@ export default function Dashboard() {
                   {/* Linhas de Stats Centralizadas */}
                   {[
                     { label: 'Vitórias', val1: stats.vitoriasCasa, val2: stats.vitoriasVisitante, color: 'text-emerald-500' },
-                    { label: 'Derrotas', val1: stats.derrotasCasa, val2: stats.derrotasVisitante, color: 'text-rose-500' },
                     { label: 'Sets Vencidos', val1: stats.setsCasa, val2: stats.setsVisitante, color: 'text-blue-500' },
-                    { label: 'Sets Perdidos', val1: stats.setsVisitante, val2: stats.setsCasa, color: 'text-slate-400' },
                     { label: 'Partidas Jogadas', val1: stats.partidasJogadas, val2: stats.partidasJogadas, color: 'text-white' },
                   ].map((stat, i) => (
                     <div key={i} className="grid grid-cols-3 items-center group/row">
@@ -835,23 +840,38 @@ export default function Dashboard() {
                     {/* Glow Effect on Hover */}
                     <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-[40px] blur opacity-0 group-hover:opacity-100 transition duration-500" />
                     
-                    <div className="relative bg-[#0d121f]/90 backdrop-blur-2xl border border-white/5 rounded-[40px] overflow-hidden">
-                      {/* Match Header Centralizado */}
-                      <div className="bg-[#111827] border-b border-white/5 py-4 flex flex-col items-center justify-center relative">
-                        <span className="text-[10px] font-black uppercase text-slate-500 tracking-[0.4em] mb-1">MATCH</span>
-                        <span className="text-4xl font-black italic text-white leading-none tracking-tighter">{c.ordem}</span>
-                        <div className={`absolute right-8 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl ${getTeamColor(jogo.time_casa).bg} flex items-center justify-center text-white font-black text-sm shadow-xl ${getTeamColor(jogo.time_casa).shadow}`}>
-                          {c.categoria}
+                    <div className="relative bg-[#0d121f]/95 backdrop-blur-3xl border border-white/5 rounded-[32px] overflow-hidden shadow-2xl">
+                      {/* Match Header - Mais Chamativo e Categoria Explícita */}
+                      <div className="bg-gradient-to-r from-slate-900 via-[#111827] to-slate-900 border-b border-white/5 py-4 flex flex-col items-center justify-center relative">
+                        <div className="flex flex-col items-center">
+                          <span className="text-[9px] font-black uppercase text-blue-500/60 tracking-[0.6em] mb-1">MATCH</span>
+                          <div className="relative">
+                            <span className="text-5xl font-black italic text-white leading-none tracking-tighter drop-shadow-[0_0_20px_rgba(255,255,255,0.4)]">
+                              {c.ordem}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {/* Categoria em Destaque Centralizado */}
+                        <div className="mt-3 flex items-center gap-3 px-6 py-1.5 bg-white/5 rounded-full border border-white/10">
+                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.3em]">CATEGORIA</span>
+                          <span className={`text-sm font-black uppercase tracking-tighter ${getTeamColor(jogo.time_casa).text}`}>
+                            {c.categoria}
+                          </span>
+                        </div>
+
+                        {/* Badge Lateral de Categoria (Opcional) */}
+                        <div className={`absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-2xl ${getTeamColor(jogo.time_casa).bg} flex items-center justify-center text-white font-black text-lg shadow-2xl ${getTeamColor(jogo.time_casa).shadow} hidden lg:flex`}>
+                          {c.categoria.charAt(0)}
                         </div>
                       </div>
 
-                      <div className="flex flex-col items-stretch">
-                        {/* Main Content Area */}
-                        <div className="flex-1 p-6 lg:p-10">
-                          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-8 lg:gap-12">
-                            
-                            {/* Time Casa (Esquerda) */}
-                            <div className="space-y-3">
+                      <div className="p-4 lg:p-8">
+                        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-6 lg:gap-10">
+                          
+                          {/* Time Casa (Esquerda) */}
+                          <div className="flex flex-col gap-3">
+                            <div className="space-y-2.5">
                               <PlayerBox 
                                 name={c.jogador1} 
                                 category={c.categoria} 
@@ -872,56 +892,70 @@ export default function Dashboard() {
                                 />
                               )}
                             </div>
+                            
+                            {profile?.role === 'admin' && (
+                              <button 
+                                onClick={() => handleWO(c.id, 'jogador2')}
+                                className="w-full py-2 bg-rose-500/5 hover:bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-500 transition-all flex items-center justify-center gap-2 group/wo"
+                                title="Equipe Casa não compareceu - Vitória para Visitante"
+                              >
+                                <X size={14} className="group-hover/wo:rotate-90 transition-transform" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">W.O. (DERROTA CASA)</span>
+                              </button>
+                            )}
+                          </div>
 
-                            {/* Placar Central */}
-                            <div className="flex flex-col items-center justify-center bg-slate-900/40 rounded-[32px] p-6 border border-white/5 min-w-[220px] order-last md:order-none">
-                              <div className="space-y-4 w-full">
-                                {[1, 2, 3].map(setNum => {
-                                  const s1 = c[`set${setNum}_j1` as keyof ConfrontoJogador];
-                                  const s2 = c[`set${setNum}_j2` as keyof ConfrontoJogador];
-                                  const isVisible = s1 !== null || s2 !== null || profile?.role === 'admin';
-                                  
-                                  if (!isVisible) return null;
+                          {/* Placar Central - Mais Compacto */}
+                          <div className="flex flex-col items-center justify-center bg-slate-900/60 rounded-[32px] p-6 border border-white/5 min-w-[220px] shadow-2xl">
+                            <div className="space-y-4 w-full">
+                              {[1, 2, 3].map(setNum => {
+                                const s1 = c[`set${setNum}_j1` as keyof ConfrontoJogador];
+                                const s2 = c[`set${setNum}_j2` as keyof ConfrontoJogador];
+                                const isVisible = s1 !== null || s2 !== null || profile?.role === 'admin';
+                                
+                                if (!isVisible) return null;
 
-                                  return (
-                                    <div key={setNum} className="flex flex-col items-center gap-2">
-                                      <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.4em]">Set {setNum}</span>
-                                      <div className="flex items-center gap-3">
-                                        <input 
-                                          type="number" 
-                                          defaultValue={s1 ?? ''} 
-                                          disabled={profile?.role !== 'admin'}
-                                          id={`set${setNum}_j1_${c.id}`}
-                                          className={`w-14 h-14 bg-slate-900 border border-white/10 rounded-2xl text-center text-2xl font-black text-white focus:ring-2 transition-all disabled:opacity-100 ${getTeamColor(jogo.time_casa).border} focus:ring-${getTeamColor(jogo.time_casa).text.split('-')[1]}-500/20`}
-                                        />
-                                        <div className="w-1 h-1 rounded-full bg-slate-700" />
-                                        <input 
-                                          type="number" 
-                                          defaultValue={s2 ?? ''} 
-                                          disabled={profile?.role !== 'admin'}
-                                          id={`set${setNum}_j2_${c.id}`}
-                                          className={`w-14 h-14 bg-slate-900 border border-white/10 rounded-2xl text-center text-2xl font-black text-white focus:ring-2 transition-all disabled:opacity-100 ${getTeamColor(jogo.time_visitante).border} focus:ring-${getTeamColor(jogo.time_visitante).text.split('-')[1]}-500/20`}
-                                        />
-                                      </div>
+                                return (
+                                  <div key={setNum} className="flex items-center justify-between gap-4">
+                                    <span className="text-[8px] font-black text-slate-600 uppercase tracking-[0.4em] w-10">SET {setNum}</span>
+                                    <div className="flex items-center gap-2">
+                                      <input 
+                                        type="number" 
+                                        defaultValue={s1 ?? ''} 
+                                        disabled={profile?.role !== 'admin'}
+                                        id={`set${setNum}_j1_${c.id}`}
+                                        className={`w-12 h-12 bg-slate-950 border border-white/5 rounded-2xl text-center text-2xl font-black text-white focus:ring-1 transition-all disabled:opacity-100 ${getTeamColor(jogo.time_casa).border}`}
+                                      />
+                                      <div className="w-1.5 h-1.5 rounded-full bg-slate-800" />
+                                      <input 
+                                        type="number" 
+                                        defaultValue={s2 ?? ''} 
+                                        disabled={profile?.role !== 'admin'}
+                                        id={`set${setNum}_j2_${c.id}`}
+                                        className={`w-12 h-12 bg-slate-950 border border-white/5 rounded-2xl text-center text-2xl font-black text-white focus:ring-1 transition-all disabled:opacity-100 ${getTeamColor(jogo.time_visitante).border}`}
+                                      />
                                     </div>
-                                  );
-                                })}
-
-                                {profile?.role === 'admin' && (
-                                  <div className="pt-4 flex justify-center">
-                                    <button 
-                                      onClick={() => saveMatchScores(c.id)}
-                                      className="flex items-center gap-2 px-6 py-2 bg-emerald-500/20 text-emerald-500 rounded-xl hover:bg-emerald-500/30 transition-all border border-emerald-500/30 text-[10px] font-black uppercase tracking-widest"
-                                    >
-                                      <Save size={14} /> Salvar
-                                    </button>
+                                    <div className="w-10" />
                                   </div>
-                                )}
-                              </div>
-                            </div>
+                                );
+                              })}
 
-                            {/* Time Visitante (Direita) */}
-                            <div className="space-y-3">
+                              {profile?.role === 'admin' && (
+                                <div className="pt-4 flex justify-center">
+                                  <button 
+                                    onClick={() => saveMatchScores(c.id)}
+                                    className="flex items-center gap-2 px-8 py-2.5 bg-emerald-500/10 text-emerald-500 rounded-2xl hover:bg-emerald-500/20 transition-all border border-emerald-500/20 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/5"
+                                  >
+                                    <Save size={14} /> Salvar Placar
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Time Visitante (Direita) */}
+                          <div className="flex flex-col gap-3">
+                            <div className="space-y-2.5">
                               <PlayerBox 
                                 name={c.jogador2} 
                                 category={c.categoria} 
@@ -942,8 +976,19 @@ export default function Dashboard() {
                                 />
                               )}
                             </div>
-
+                            
+                            {profile?.role === 'admin' && (
+                              <button 
+                                onClick={() => handleWO(c.id, 'jogador1')}
+                                className="w-full py-2 bg-rose-500/5 hover:bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-500 transition-all flex items-center justify-center gap-2 group/wo"
+                                title="Equipe Visitante não compareceu - Vitória para Casa"
+                              >
+                                <X size={14} className="group-hover/wo:rotate-90 transition-transform" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">W.O. (DERROTA VISITANTE)</span>
+                              </button>
+                            )}
                           </div>
+
                         </div>
                       </div>
                     </div>
