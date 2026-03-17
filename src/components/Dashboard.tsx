@@ -29,6 +29,9 @@ const PlayerBox = ({ name = '', category, label, isDupla = false, teamName = '',
   isAdmin?: boolean
 }) => {
   const colors = getTeamColor(teamName);
+  const nameParts = (name || 'A DEFINIR').split(' ');
+  const firstName = nameParts[0];
+  const surname = nameParts.slice(1).join(' ') || 'TENISTA';
   
   return (
     <div className={`
@@ -53,11 +56,11 @@ const PlayerBox = ({ name = '', category, label, isDupla = false, teamName = '',
           />
         ) : (
           <>
-            <span className="text-base font-black tracking-tight uppercase leading-tight text-white">
-              {(name || 'A DEFINIR').split(' ')[0]}
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none">
+              {firstName}
             </span>
-            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-              {(name || '').split(' ').slice(1).join(' ') || 'TENISTA'}
+            <span className="text-lg font-black tracking-tight uppercase leading-tight text-white">
+              {surname}
             </span>
           </>
         )}
@@ -109,18 +112,27 @@ export default function Dashboard() {
       let setsGanhosJ2 = 0;
       let jogou = false;
 
-      if (c.set1_j1 !== null && c.set1_j2 !== null) {
+      // Uma partida é considerada jogada se pelo menos um set tem placar diferente de zero
+      const s1_1 = c.set1_j1 || 0;
+      const s1_2 = c.set1_j2 || 0;
+      const s2_1 = c.set2_j1 || 0;
+      const s2_2 = c.set2_j2 || 0;
+      const s3_1 = c.set3_j1 || 0;
+      const s3_2 = c.set3_j2 || 0;
+
+      if (s1_1 > 0 || s1_2 > 0 || s2_1 > 0 || s2_2 > 0 || s3_1 > 0 || s3_2 > 0) {
         jogou = true;
+      }
+
+      if (c.set1_j1 !== null && c.set1_j2 !== null) {
         if (c.set1_j1 > c.set1_j2) setsGanhosJ1++;
         else if (c.set1_j2 > c.set1_j1) setsGanhosJ2++;
       }
       if (c.set2_j1 !== null && c.set2_j2 !== null) {
-        jogou = true;
         if (c.set2_j1 > c.set2_j2) setsGanhosJ1++;
         else if (c.set2_j2 > c.set2_j1) setsGanhosJ2++;
       }
       if (c.set3_j1 !== null && c.set3_j2 !== null) {
-        jogou = true;
         if (c.set3_j1 > c.set3_j2) setsGanhosJ1++;
         else if (c.set3_j2 > c.set3_j1) setsGanhosJ2++;
       }
@@ -491,6 +503,25 @@ export default function Dashboard() {
     if (!error) fetchData();
   };
 
+  const saveMatchScores = async (confId: string) => {
+    if (profile?.role !== 'admin') return;
+
+    const updates: any = {};
+    [1, 2, 3].forEach(setNum => {
+      const v1 = (document.getElementById(`set${setNum}_j1_${confId}`) as HTMLInputElement)?.value;
+      const v2 = (document.getElementById(`set${setNum}_j2_${confId}`) as HTMLInputElement)?.value;
+      updates[`set${setNum}_j1`] = v1 === '' ? null : parseInt(v1);
+      updates[`set${setNum}_j2`] = v2 === '' ? null : parseInt(v2);
+    });
+
+    const { error } = await supabase
+      .from('confrontos_jogadores')
+      .update(updates)
+      .eq('id', confId);
+
+    if (!error) fetchData();
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center">
@@ -526,55 +557,67 @@ export default function Dashboard() {
         </motion.div>
       </section>
 
-      <main className="max-w-6xl mx-auto px-4 space-y-8 relative z-20">
-        {/* Main Navigation Grid */}
-        <section className={`grid gap-6 transition-all duration-500 ${activeTab === 'dashboard' ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-4'}`}>
-          <motion.button
-            whileHover={{ y: -4, scale: 1.01 }}
-            onClick={() => setActiveTab('dashboard')}
-            className={`rounded-[32px] flex items-center justify-center gap-4 shadow-xl group transition-all ${activeTab === 'dashboard' ? 'bg-white p-10 flex-col' : 'bg-white/5 border border-white/10 p-4'}`}
-          >
-            <div className={`rounded-2xl ${activeTab === 'dashboard' ? 'bg-blue-500 text-white p-6' : 'bg-blue-500/10 text-blue-600 p-3'} group-hover:scale-110 transition-transform`}>
-              <LayoutDashboard className={activeTab === 'dashboard' ? "w-10 h-10" : "w-5 h-5"} />
-            </div>
-            <span className={`font-black uppercase tracking-widest ${activeTab === 'dashboard' ? 'text-sm text-slate-900' : 'text-[10px] text-slate-400'}`}>Dashboard</span>
-          </motion.button>
+      <main className="max-w-6xl mx-auto px-4 space-y-6 relative z-20">
+        {/* Main Navigation - Compact & Professional */}
+        <section className="flex flex-col md:flex-row gap-3">
+          <div className="flex flex-1 gap-3">
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setActiveTab('dashboard')}
+              className={`flex-1 flex items-center justify-center gap-3 py-3 px-6 rounded-2xl transition-all border ${
+                activeTab === 'dashboard' 
+                ? 'bg-white border-white shadow-lg shadow-white/5' 
+                : 'bg-white/5 border-white/5 hover:bg-white/10'
+              }`}
+            >
+              <LayoutDashboard className={`w-4 h-4 ${activeTab === 'dashboard' ? 'text-blue-600' : 'text-slate-400'}`} />
+              <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'dashboard' ? 'text-slate-900' : 'text-slate-400'}`}>Dashboard</span>
+            </motion.button>
 
-          <motion.button
-            whileHover={{ y: -4, scale: 1.01 }}
-            onClick={() => setActiveTab('jogos')}
-            className={`rounded-[32px] flex items-center justify-center gap-4 shadow-xl group transition-all ${activeTab === 'jogos' ? 'bg-white p-10 flex-col' : 'bg-white/5 border border-white/10 p-4'}`}
-          >
-            <div className={`rounded-2xl ${activeTab === 'jogos' ? 'bg-purple-500 text-white p-6' : 'bg-purple-500/10 text-purple-600 p-3'} group-hover:scale-110 transition-transform`}>
-              <Trophy className={activeTab === 'jogos' ? "w-10 h-10" : "w-5 h-5"} />
-            </div>
-            <span className={`font-black uppercase tracking-widest ${activeTab === 'jogos' ? 'text-sm text-slate-900' : 'text-[10px] text-slate-400'}`}>Jogos</span>
-          </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setActiveTab('jogos')}
+              className={`flex-1 flex items-center justify-center gap-3 py-3 px-6 rounded-2xl transition-all border ${
+                activeTab === 'jogos' 
+                ? 'bg-white border-white shadow-lg shadow-white/5' 
+                : 'bg-white/5 border-white/5 hover:bg-white/10'
+              }`}
+            >
+              <Trophy className={`w-4 h-4 ${activeTab === 'jogos' ? 'text-purple-600' : 'text-slate-400'}`} />
+              <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'jogos' ? 'text-slate-900' : 'text-slate-400'}`}>Jogos</span>
+            </motion.button>
+          </div>
 
-          <motion.button
-            whileHover={{ y: -4, scale: 1.01 }}
-            onClick={() => setShowUploadModal(true)}
-            className={`rounded-[32px] flex items-center justify-center gap-4 shadow-xl group transition-all bg-white/5 border border-white/10 ${activeTab === 'dashboard' ? 'p-10 flex-col' : 'p-4'}`}
-          >
-            <div className={`rounded-2xl bg-emerald-500/10 text-emerald-500 group-hover:scale-110 transition-transform ${activeTab === 'dashboard' ? 'p-6' : 'p-3'}`}>
-              <PlusCircle className={activeTab === 'dashboard' ? "w-10 h-10" : "w-5 h-5"} />
-            </div>
-            <span className={`font-black uppercase tracking-widest text-slate-400 ${activeTab === 'dashboard' ? 'text-sm' : 'text-[10px]'}`}>Upload Súmulas</span>
-          </motion.button>
+          <div className="flex flex-1 gap-3">
+            {profile?.role === 'admin' && (
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setShowUploadModal(true)}
+                className="flex-1 flex items-center justify-center gap-3 py-3 px-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all group"
+              >
+                <PlusCircle className="w-4 h-4 text-emerald-500 group-hover:rotate-90 transition-transform" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500">Upload Súmulas</span>
+              </motion.button>
+            )}
 
-          {activeTab !== 'dashboard' && (
-            <div className="flex gap-2 items-center justify-center bg-white/5 border border-white/10 rounded-[32px] p-2">
-              {dates.map(date => (
-                <button 
-                  key={date}
-                  onClick={() => setSelectedDate(date)}
-                  className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedDate === date ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                  {formatDate(date)}
-                </button>
-              ))}
-            </div>
-          )}
+            {activeTab === 'jogos' && (
+              <div className="flex-[2] flex gap-1 p-1 bg-white/5 border border-white/5 rounded-2xl">
+                {dates.map(date => (
+                  <button 
+                    key={date}
+                    onClick={() => setSelectedDate(date)}
+                    className={`flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all ${
+                      selectedDate === date 
+                      ? 'bg-blue-600 text-white shadow-md' 
+                      : 'text-slate-500 hover:text-slate-300'
+                    }`}
+                  >
+                    {formatDate(date)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </section>
 
         {storageError && !dismissStorageError && profile?.role === 'admin' && (
@@ -793,19 +836,16 @@ export default function Dashboard() {
                     <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-[40px] blur opacity-0 group-hover:opacity-100 transition duration-500" />
                     
                     <div className="relative bg-[#0d121f]/90 backdrop-blur-2xl border border-white/5 rounded-[40px] overflow-hidden">
-                      <div className="flex flex-col lg:flex-row items-stretch">
-                        
-                        {/* Match Info Sidebar */}
-                        <div className="bg-[#111827] border-b lg:border-b-0 lg:border-r border-white/5 px-8 py-8 lg:py-10 flex flex-row lg:flex-col items-center justify-between lg:justify-center min-w-[140px] gap-4">
-                          <div className="flex flex-col items-center">
-                            <span className="text-[10px] font-black uppercase text-slate-500 tracking-[0.4em] mb-1">MATCH</span>
-                            <span className="text-5xl lg:text-6xl font-black italic text-white leading-none tracking-tighter">{c.ordem}</span>
-                          </div>
-                          <div className={`w-12 h-12 rounded-2xl ${getTeamColor(jogo.time_casa).bg} flex items-center justify-center text-white font-black text-xl shadow-xl ${getTeamColor(jogo.time_casa).shadow}`}>
-                            {c.categoria}
-                          </div>
+                      {/* Match Header Centralizado */}
+                      <div className="bg-[#111827] border-b border-white/5 py-4 flex flex-col items-center justify-center relative">
+                        <span className="text-[10px] font-black uppercase text-slate-500 tracking-[0.4em] mb-1">MATCH</span>
+                        <span className="text-4xl font-black italic text-white leading-none tracking-tighter">{c.ordem}</span>
+                        <div className={`absolute right-8 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl ${getTeamColor(jogo.time_casa).bg} flex items-center justify-center text-white font-black text-sm shadow-xl ${getTeamColor(jogo.time_casa).shadow}`}>
+                          {c.categoria}
                         </div>
+                      </div>
 
+                      <div className="flex flex-col items-stretch">
                         {/* Main Content Area */}
                         <div className="flex-1 p-6 lg:p-10">
                           <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-8 lg:gap-12">
@@ -834,7 +874,7 @@ export default function Dashboard() {
                             </div>
 
                             {/* Placar Central */}
-                            <div className="flex flex-col items-center justify-center bg-slate-900/40 rounded-[32px] p-6 border border-white/5 min-w-[180px] order-last md:order-none">
+                            <div className="flex flex-col items-center justify-center bg-slate-900/40 rounded-[32px] p-6 border border-white/5 min-w-[220px] order-last md:order-none">
                               <div className="space-y-4 w-full">
                                 {[1, 2, 3].map(setNum => {
                                   const s1 = c[`set${setNum}_j1` as keyof ConfrontoJogador];
@@ -862,24 +902,21 @@ export default function Dashboard() {
                                           id={`set${setNum}_j2_${c.id}`}
                                           className={`w-14 h-14 bg-slate-900 border border-white/10 rounded-2xl text-center text-2xl font-black text-white focus:ring-2 transition-all disabled:opacity-100 ${getTeamColor(jogo.time_visitante).border} focus:ring-${getTeamColor(jogo.time_visitante).text.split('-')[1]}-500/20`}
                                         />
-                                        {profile?.role === 'admin' && (
-                                          <button 
-                                            onClick={() => {
-                                              const v1 = (document.getElementById(`set${setNum}_j1_${c.id}`) as HTMLInputElement).value;
-                                              const v2 = (document.getElementById(`set${setNum}_j2_${c.id}`) as HTMLInputElement).value;
-                                              updatePlacar(c.id, `set${setNum}_j1`, v1 === '' ? null : parseInt(v1));
-                                              updatePlacar(c.id, `set${setNum}_j2`, v2 === '' ? null : parseInt(v2));
-                                            }}
-                                            className="p-2 bg-emerald-500/20 text-emerald-500 rounded-xl hover:bg-emerald-500/30 transition-all border border-emerald-500/30"
-                                            title="Salvar Set"
-                                          >
-                                            <Check size={16} />
-                                          </button>
-                                        )}
                                       </div>
                                     </div>
                                   );
                                 })}
+
+                                {profile?.role === 'admin' && (
+                                  <div className="pt-4 flex justify-center">
+                                    <button 
+                                      onClick={() => saveMatchScores(c.id)}
+                                      className="flex items-center gap-2 px-6 py-2 bg-emerald-500/20 text-emerald-500 rounded-xl hover:bg-emerald-500/30 transition-all border border-emerald-500/30 text-[10px] font-black uppercase tracking-widest"
+                                    >
+                                      <Save size={14} /> Salvar
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             </div>
 
