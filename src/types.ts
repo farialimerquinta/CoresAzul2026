@@ -33,7 +33,9 @@ export interface ConfrontoJogador {
   ordem: number;
   categoria: string;
   jogador1: string;
+  jogador1_dupla: string | null;
   jogador2: string;
+  jogador2_dupla: string | null;
   set1_j1: number | null;
   set1_j2: number | null;
   set2_j1: number | null;
