@@ -16,21 +16,37 @@ export default function Login() {
     setLoading(true);
     setError(null);
 
-    // Como o Supabase Auth usa email, vamos simular usando o celular como prefixo
-    const email = `${celular.replace(/\D/g, '')}@timeazul.com`;
-
     try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password: senha,
-      });
+      // Limpa caracteres não numéricos do celular para comparação
+      const celularLimpo = celular.replace(/\D/g, '');
 
-      if (authError) throw authError;
-      if (data.user) {
-        navigate('/dashboard');
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('celular', celularLimpo)
+        .eq('senha', senha)
+        .single();
+
+      if (profileError || !profile) {
+        console.error('Erro no login:', profileError);
+        throw new Error('Celular ou senha incorretos.');
       }
+
+      // Salva o perfil no localStorage para manter a sessão
+      localStorage.setItem('torneio_user', JSON.stringify(profile));
+      
+      // Dispara evento para o App.tsx atualizar a sessão instantaneamente
+      window.dispatchEvent(new Event('login-success'));
+      
+      navigate('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Erro ao fazer login. Verifique suas credenciais.');
+      if (err.message?.includes('PGRST116')) {
+        setError('Usuário não encontrado ou senha incorreta.');
+      } else if (err.message?.includes('policy')) {
+        setError('Erro de permissão no banco de dados. Verifique as políticas RLS.');
+      } else {
+        setError(err.message || 'Erro ao fazer login.');
+      }
     } finally {
       setLoading(false);
     }

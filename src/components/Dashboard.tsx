@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { Jogo, Classificacao, Profile, ConfrontoJogador } from '../types';
 import { Trophy, Calendar, Upload, Save, Image as ImageIcon, CheckCircle2, AlertCircle, LogOut, LayoutDashboard, Users, ArrowLeftRight, PlusCircle, FileText, X, Check } from 'lucide-react';
@@ -86,13 +86,6 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'jogos'>('dashboard');
   const [selectedDate, setSelectedDate] = useState<string>('2026-03-21');
   const [selectedTeam, setSelectedTeam] = useState<string>('');
-
-  useEffect(() => {
-    const jogo = jogos.find(j => j.data === selectedDate);
-    if (jogo) {
-      setSelectedTeam(jogo.time_casa);
-    }
-  }, [selectedDate, jogos]);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const navigate = useNavigate();
 
@@ -156,51 +149,29 @@ export default function Dashboard() {
 
   const dates = ['2026-03-21', '2026-03-22', '2026-03-28', '2026-03-29'];
 
-  useEffect(() => {
-    checkUser();
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [selectedDate]);
-
-  const checkUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+  const checkUser = useCallback(async () => {
+    const savedUser = localStorage.getItem('torneio_user');
+    if (!savedUser) {
       navigate('/');
       return;
     }
 
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-    
-    if (profileData) {
+    try {
+      const profileData = JSON.parse(savedUser) as Profile;
       setProfile(profileData);
-    } else {
-      // Fallback para desenvolvimento: se não houver perfil, assume admin para o usuário logado
-      setProfile({ id: user.id, role: 'admin', celular: user.email || '0000000000' } as Profile);
+    } catch (e) {
+      localStorage.removeItem('torneio_user');
+      navigate('/');
     }
-  };
+  }, [navigate]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     
-    // Check Storage Health - More robust check
     try {
-      // Em vez de getBucket (que exige admin), tentamos listar arquivos. 
-      // Se o bucket não existir, dará erro.
       const { error: listError } = await supabase.storage.from('sumulas').list('', { limit: 1 });
-      
-      if (listError) {
-        if (listError.message.includes('not found') || listError.message.includes('does not exist')) {
-          setStorageError('O bucket "sumulas" não foi encontrado. Crie-o no painel Storage do Supabase como "Public".');
-        } else {
-          // Outros erros (permissão) ignoramos
-          setStorageError(null);
-        }
+      if (listError && (listError.message.includes('not found') || listError.message.includes('does not exist'))) {
+        setStorageError('O bucket "sumulas" não foi encontrado. Crie-o no painel Storage do Supabase como "Public".');
       } else {
         setStorageError(null);
       }
@@ -225,16 +196,28 @@ export default function Dashboard() {
       ]);
 
       if (classRes.data) setClassificacao(classRes.data);
-      
-      if (confRes.data) {
-        setConfrontos(confRes.data);
-      }
+      if (confRes.data) setConfrontos(confRes.data);
     }
     setLoading(false);
-  };
+  }, [selectedDate]);
+
+  useEffect(() => {
+    checkUser();
+  }, [checkUser]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
+    const jogo = jogos.find(j => j.data === selectedDate);
+    if (jogo) {
+      setSelectedTeam(prev => prev === jogo.time_casa ? prev : jogo.time_casa);
+    }
+  }, [selectedDate, jogos]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    localStorage.removeItem('torneio_user');
     navigate('/');
   };
 
@@ -518,6 +501,72 @@ export default function Dashboard() {
     if (!error) fetchData();
   };
 
+  const handleImportPDF = async () => {
+    const jogo = jogos.find(j => j.data === selectedDate);
+    if (!jogo) return;
+
+    setLoading(true);
+    try {
+      const pdfData = [
+        { ordem: 1, categoria: 'B', azul1: 'Norimiti Fukuma', azul2: 'Sheila Okazaki', roxo1: 'Luiz Sakamoto', roxo2: 'Humberto Matsui' },
+        { ordem: 2, categoria: 'F', azul1: 'Roberto Brito', azul2: 'Midori Tukiama', roxo1: 'Maria Shimura', roxo2: 'Giovana Hidaka' },
+        { ordem: 3, categoria: 'E', azul1: 'Sayuri Takata', azul2: 'Alan Yogui', roxo1: 'Claudio Yara', roxo2: 'Marcia Higa' },
+        { ordem: 4, categoria: 'D', azul1: 'Adriana Watanabe', azul2: 'Leandro Enjoji', roxo1: 'Luis Yamamoto', roxo2: 'Alexandre Fugimoto' },
+        { ordem: 5, categoria: 'C', azul1: 'Eric Shigetomi', azul2: 'Kenzo Iwasaki', roxo1: 'Helena Omoto', roxo2: 'Daniel Matsunaga' },
+        { ordem: 6, categoria: 'B', azul1: 'Fabricio Oliveira', azul2: 'Maysa Nakashima', roxo1: 'Hugo Higashi', roxo2: 'Natalia Bordegatto' },
+        { ordem: 7, categoria: 'F', azul1: 'Luciana Oliveira', azul2: 'Adriana Irino', roxo1: 'Daiane Santos', roxo2: 'Regina Yara' },
+        { ordem: 8, categoria: 'E', azul1: 'Katia Goshi', azul2: 'Guilherme Haraguchi', roxo1: 'Fernanda Nakai', roxo2: 'Erika Uchida' },
+        { ordem: 9, categoria: 'D', azul1: 'Thiago Irino', azul2: 'Marcell Anno', roxo1: 'Marcos Igutti', roxo2: 'Elaine Gusukuma' },
+        { ordem: 10, categoria: 'C', azul1: 'Willian Kubota', azul2: 'Rose Taketani', roxo1: 'Marcelo Hashimoto', roxo2: 'Ricardo Shimabukuro' },
+        { ordem: 11, categoria: 'B', azul1: 'Claudio Udo', azul2: 'Alexandre Uehara', roxo1: 'Julio Yokoyama', roxo2: 'Andrey Nakamura' },
+        { ordem: 12, categoria: 'A', azul1: 'Julio Nuruki', azul2: 'Pedro Tomiyoshi', roxo1: 'Marcus Momesso', roxo2: 'Ricardo Matsumoto' },
+        { ordem: 13, categoria: 'F', azul1: 'Nayara Costa', azul2: 'Raquel Honda', roxo1: 'Lilian Ribeiro', roxo2: 'Henrique Fukace' },
+        { ordem: 14, categoria: 'E', azul1: 'Jefferson Sena', azul2: 'Rodrigo Galo', roxo1: 'Fabio Okamoto', roxo2: 'Helio Murata' },
+        { ordem: 15, categoria: 'D', azul1: 'Aquino Ito', azul2: 'Elia Yamakawa', roxo1: 'Marina Hamada', roxo2: 'Claudio Habara' },
+        { ordem: 16, categoria: 'C', azul1: 'Marcio Muramoto', azul2: 'Maria Ishikawa', roxo1: 'Maria Yokoyama', roxo2: 'Julio Sunto' },
+        { ordem: 17, categoria: 'B', azul1: 'Fernando Higa', azul2: 'Victor Sunto', roxo1: 'Paulo Uezu', roxo2: 'Abilio Tsunoushi' },
+        { ordem: 18, categoria: 'A', azul1: 'Eric Hayashida', azul2: 'Savino Micco', roxo1: 'Eduardo Hoshino', roxo2: 'Anderson Vieira' }
+      ];
+
+      const isAzulCasa = jogo.time_casa === 'Azul';
+
+      for (const item of pdfData) {
+        const { data: existing } = await supabase
+          .from('confrontos_jogadores')
+          .select('id')
+          .eq('jogo_id', jogo.id)
+          .eq('ordem', item.ordem)
+          .single();
+
+        const updateData = {
+          jogo_id: jogo.id,
+          ordem: item.ordem,
+          categoria: item.categoria,
+          jogador1: isAzulCasa ? item.azul1 : item.roxo1,
+          jogador1_dupla: isAzulCasa ? item.azul2 : item.roxo2,
+          jogador2: isAzulCasa ? item.roxo1 : item.azul1,
+          jogador2_dupla: isAzulCasa ? item.roxo2 : item.azul2
+        };
+
+        if (existing) {
+          await supabase
+            .from('confrontos_jogadores')
+            .update(updateData)
+            .eq('id', existing.id);
+        } else {
+          await supabase
+            .from('confrontos_jogadores')
+            .insert(updateData);
+        }
+      }
+      await fetchData();
+    } catch (error) {
+      console.error('Erro ao importar PDF:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleWO = async (confId: string, winner: 'jogador1' | 'jogador2') => {
     if (profile?.role !== 'admin') return;
 
@@ -607,14 +656,25 @@ export default function Dashboard() {
 
           <div className="flex flex-1 gap-3">
             {profile?.role === 'admin' && (
-              <motion.button
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setShowUploadModal(true)}
-                className="flex-1 flex items-center justify-center gap-3 py-3 px-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all group"
-              >
-                <PlusCircle className="w-4 h-4 text-emerald-500 group-hover:rotate-90 transition-transform" />
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500">Upload Súmulas</span>
-              </motion.button>
+              <div className="flex flex-1 gap-3">
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowUploadModal(true)}
+                  className="flex-1 flex items-center justify-center gap-3 py-3 px-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all group"
+                >
+                  <PlusCircle className="w-4 h-4 text-emerald-500 group-hover:rotate-90 transition-transform" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500">Upload Súmulas</span>
+                </motion.button>
+
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleImportPDF}
+                  className="flex-1 flex items-center justify-center gap-3 py-3 px-6 rounded-2xl bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-all group"
+                >
+                  <FileText className="w-4 h-4 text-blue-500" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500">Importar PDF</span>
+                </motion.button>
+              </div>
             )}
 
             {activeTab === 'jogos' && (

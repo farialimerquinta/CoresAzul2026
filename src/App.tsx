@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import Login from './components/Login';
@@ -8,18 +8,38 @@ export default function App() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
+  const checkSession = useCallback(() => {
+    const savedUser = localStorage.getItem('torneio_user');
+    if (savedUser) {
+      try {
+        const parsed = JSON.parse(savedUser);
+        setSession((prev: any) => {
+          if (prev && prev.id === parsed.id && prev.role === parsed.role) {
+            return prev;
+          }
+          return parsed;
+        });
+      } catch (e) {
+        setSession(null);
+      }
+    } else {
+      setSession(null);
+    }
   }, []);
+
+  useEffect(() => {
+    checkSession();
+    setLoading(false);
+
+    const handleStorageChange = () => checkSession();
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('login-success', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('login-success', handleStorageChange);
+    };
+  }, [checkSession]);
 
   if (loading) {
     return (
