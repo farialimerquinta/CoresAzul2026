@@ -19,29 +19,55 @@ const getTeamColor = (teamName: string) => {
   return { bg: 'bg-slate-500', text: 'text-slate-500', border: 'border-slate-500/30', shadow: 'shadow-slate-500/20', light: 'bg-slate-500/10' };
 };
 
-const PlayerBox = ({ name = '', category, label, isDupla = false, teamName = '', onUpdate, isAdmin = false }: { 
+const PlayerBox = ({ name = '', category, label, isDupla = false, teamName = '', onUpdate, isAdmin = false, minimal = false }: { 
   name?: string, 
   category: string, 
   label: string,
   isDupla?: boolean,
   teamName?: string,
   onUpdate?: (val: string) => void,
-  isAdmin?: boolean
+  isAdmin?: boolean,
+  minimal?: boolean
 }) => {
   const colors = getTeamColor(teamName);
   const nameParts = (name || 'A DEFINIR').split(' ');
   const firstName = nameParts[0];
   const surname = nameParts.slice(1).join(' ') || 'TENISTA';
   
+  if (minimal) {
+    return (
+      <div className="flex items-center gap-2 py-1 group">
+        <div className={`w-6 h-6 md:w-8 md:h-8 rounded-lg flex items-center justify-center font-black text-[8px] md:text-xs shadow-inner flex-shrink-0 ${colors.bg} text-white`}>
+          {category}
+        </div>
+        <div className="flex flex-col flex-1 min-w-0">
+          {isAdmin ? (
+            <input
+              type="text"
+              value={name || ''}
+              onChange={(e) => onUpdate?.(e.target.value)}
+              className="bg-transparent border-none p-0 text-[10px] md:text-xs font-black tracking-tight uppercase leading-tight focus:ring-0 w-full text-white"
+              placeholder="NOME"
+            />
+          ) : (
+            <span className="text-[10px] md:text-sm font-black tracking-tight uppercase leading-tight truncate text-white group-hover:text-yellow-400 transition-colors">
+              {name || 'A DEFINIR'}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`
-      relative flex items-center gap-3 p-2.5 rounded-[18px] border transition-all duration-300
+      relative flex items-center gap-2 md:gap-3 p-1.5 md:p-2.5 rounded-[14px] md:rounded-[18px] border transition-all duration-300
       bg-[#0d121f] ${colors.border} shadow-md ${colors.shadow}
       group hover:scale-[1.02] w-full
     `}>
       <div className={`
-        w-9 h-9 rounded-lg flex items-center justify-center font-black text-base shadow-inner
-        ${colors.bg} text-white
+        w-7 h-7 md:w-9 md:h-9 rounded-lg flex items-center justify-center font-black text-xs md:text-base shadow-inner
+        ${colors.bg} text-white flex-shrink-0
       `}>
         {category}
       </div>
@@ -51,22 +77,22 @@ const PlayerBox = ({ name = '', category, label, isDupla = false, teamName = '',
             type="text"
             value={name || ''}
             onChange={(e) => onUpdate?.(e.target.value)}
-            className="bg-transparent border-none p-0 text-sm font-black tracking-tight uppercase leading-tight focus:ring-0 w-full text-white"
-            placeholder="NOME DO TENISTA"
+            className="bg-transparent border-none p-0 text-[10px] md:text-sm font-black tracking-tight uppercase leading-tight focus:ring-0 w-full text-white"
+            placeholder="NOME"
           />
         ) : (
           <>
-            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none truncate">
+            <span className="text-[7px] md:text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none truncate">
               {firstName}
             </span>
-            <span className="text-base font-black tracking-tight uppercase leading-tight truncate text-yellow-400">
+            <span className="text-xs md:text-base font-black tracking-tight uppercase leading-tight truncate text-yellow-400">
               {surname}
             </span>
           </>
         )}
       </div>
       
-      <div className={`px-2 py-0.5 rounded-full ${colors.light} border ${colors.border} text-[6px] font-black ${colors.text} uppercase tracking-[0.2em] flex-shrink-0`}>
+      <div className={`px-1.5 md:px-2 py-0.5 rounded-full ${colors.light} border ${colors.border} text-[5px] md:text-[6px] font-black ${colors.text} uppercase tracking-[0.2em] flex-shrink-0`}>
         {isDupla ? 'DUPLA' : 'SIMPLES'}
       </div>
     </div>
@@ -186,43 +212,52 @@ export default function Dashboard() {
     let setsCasa = 0;
     let setsVisitante = 0;
     let partidasJogadas = 0;
+    
+    const catVitoriasCasa: Record<string, number> = { 'F': 0, 'E': 0, 'D': 0, 'C': 0, 'B': 0, 'A': 0 };
+    const catVitoriasVisitante: Record<string, number> = { 'F': 0, 'E': 0, 'D': 0, 'C': 0, 'B': 0, 'A': 0 };
 
     currentConfrontos.forEach(c => {
       let setsGanhosJ1 = 0;
       let setsGanhosJ2 = 0;
       let jogou = false;
 
-      // Uma partida é considerada jogada se pelo menos um set tem placar diferente de zero
-      const s1_1 = c.set1_j1 || 0;
-      const s1_2 = c.set1_j2 || 0;
-      const s2_1 = c.set2_j1 || 0;
-      const s2_2 = c.set2_j2 || 0;
-      const s3_1 = c.set3_j1 || 0;
-      const s3_2 = c.set3_j2 || 0;
+      const s1_1 = c.set1_j1;
+      const s1_2 = c.set1_j2;
+      const s2_1 = c.set2_j1;
+      const s2_2 = c.set2_j2;
+      const s3_1 = c.set3_j1;
+      const s3_2 = c.set3_j2;
 
-      if (s1_1 > 0 || s1_2 > 0 || s2_1 > 0 || s2_2 > 0 || s3_1 > 0 || s3_2 > 0) {
+      if (s1_1 !== null || s1_2 !== null || s2_1 !== null || s2_2 !== null || s3_1 !== null || s3_2 !== null) {
         jogou = true;
       }
 
-      if (c.set1_j1 !== null && c.set1_j2 !== null) {
-        if (c.set1_j1 > c.set1_j2) setsGanhosJ1++;
-        else if (c.set1_j2 > c.set1_j1) setsGanhosJ2++;
+      if (s1_1 !== null && s1_2 !== null) {
+        if (s1_1 > s1_2) setsGanhosJ1++;
+        else if (s1_2 > s1_1) setsGanhosJ2++;
       }
-      if (c.set2_j1 !== null && c.set2_j2 !== null) {
-        if (c.set2_j1 > c.set2_j2) setsGanhosJ1++;
-        else if (c.set2_j2 > c.set2_j1) setsGanhosJ2++;
+      if (s2_1 !== null && s2_2 !== null) {
+        if (s2_1 > s2_2) setsGanhosJ1++;
+        else if (s2_2 > s2_1) setsGanhosJ2++;
       }
-      if (c.set3_j1 !== null && c.set3_j2 !== null) {
-        if (c.set3_j1 > c.set3_j2) setsGanhosJ1++;
-        else if (c.set3_j2 > c.set3_j1) setsGanhosJ2++;
+      if (s3_1 !== null && s3_2 !== null) {
+        if (s3_1 > s3_2) setsGanhosJ1++;
+        else if (s3_2 > s3_1) setsGanhosJ2++;
       }
 
       if (jogou) {
         partidasJogadas++;
         setsCasa += setsGanhosJ1;
         setsVisitante += setsGanhosJ2;
-        if (setsGanhosJ1 > setsGanhosJ2) vitoriasCasa++;
-        else if (setsGanhosJ2 > setsGanhosJ1) vitoriasVisitante++;
+        
+        const cat = c.categoria?.toUpperCase();
+        if (setsGanhosJ1 > setsGanhosJ2) {
+          vitoriasCasa++;
+          if (catVitoriasCasa[cat] !== undefined) catVitoriasCasa[cat]++;
+        } else if (setsGanhosJ2 > setsGanhosJ1) {
+          vitoriasVisitante++;
+          if (catVitoriasVisitante[cat] !== undefined) catVitoriasVisitante[cat]++;
+        }
       }
     });
 
@@ -232,7 +267,9 @@ export default function Dashboard() {
       setsCasa,
       setsVisitante,
       partidasJogadas,
-      jogosFaltando: 18 - partidasJogadas
+      jogosFaltando: 18 - partidasJogadas,
+      catVitoriasCasa,
+      catVitoriasVisitante
     };
   }, [confrontos]);
 
@@ -301,11 +338,22 @@ export default function Dashboard() {
   }, [fetchData]);
 
   useEffect(() => {
-    const jogo = jogos.find(j => j.data === selectedDate);
-    if (jogo) {
-      setSelectedTeam(prev => prev === jogo.time_casa ? prev : jogo.time_casa);
+    if (jogos.length > 0) {
+      const jogo = jogos.find(j => j.data === selectedDate);
+      if (jogo && selectedTeam !== jogo.time_casa) {
+        setSelectedTeam(jogo.time_casa);
+      }
     }
-  }, [selectedDate, jogos]);
+  }, [selectedDate, jogos, selectedTeam]);
+
+  const handleLocalScoreChange = (confId: string, field: string, value: string) => {
+    const numValue = value === '' ? null : parseInt(value);
+    const updateFn = (prev: ConfrontoJogador[]) => prev.map(c => 
+      c.id === confId ? { ...c, [field]: numValue } : c
+    );
+    setConfrontos(updateFn);
+    setAllConfrontos(updateFn);
+  };
 
   const handleLogout = async () => {
     localStorage.removeItem('torneio_user');
@@ -574,22 +622,62 @@ export default function Dashboard() {
   };
 
   const saveMatchScores = async (confId: string) => {
-    if (profile?.role !== 'admin') return;
+    if (profile?.role !== 'admin') {
+      alert('Apenas administradores podem salvar placares.');
+      return;
+    }
 
-    const updates: any = {};
-    [1, 2, 3].forEach(setNum => {
-      const v1 = (document.getElementById(`set${setNum}_j1_${confId}`) as HTMLInputElement)?.value;
-      const v2 = (document.getElementById(`set${setNum}_j2_${confId}`) as HTMLInputElement)?.value;
-      updates[`set${setNum}_j1`] = v1 === '' ? null : parseInt(v1);
-      updates[`set${setNum}_j2`] = v2 === '' ? null : parseInt(v2);
-    });
+    const confronto = confrontos.find(c => c.id === confId);
+    if (!confronto) {
+      alert('Confronto não encontrado.');
+      return;
+    }
 
+    const updates: any = {
+      set1_j1: confronto.set1_j1,
+      set1_j2: confronto.set1_j2,
+      set2_j1: confronto.set2_j1,
+      set2_j2: confronto.set2_j2,
+      set3_j1: confronto.set3_j1,
+      set3_j2: confronto.set3_j2,
+    };
+
+    // Calcular vencedor se houver sets preenchidos (Melhor de 3)
+    let vitoriasJ1 = 0;
+    let vitoriasJ2 = 0;
+    
+    if (updates.set1_j1 !== null && updates.set1_j2 !== null) {
+      if (updates.set1_j1 > updates.set1_j2) vitoriasJ1++;
+      else if (updates.set1_j2 > updates.set1_j1) vitoriasJ2++;
+    }
+    if (updates.set2_j1 !== null && updates.set2_j2 !== null) {
+      if (updates.set2_j1 > updates.set2_j2) vitoriasJ1++;
+      else if (updates.set2_j2 > updates.set2_j1) vitoriasJ2++;
+    }
+    if (updates.set3_j1 !== null && updates.set3_j2 !== null) {
+      if (updates.set3_j1 > updates.set3_j2) vitoriasJ1++;
+      else if (updates.set3_j2 > updates.set3_j1) vitoriasJ2++;
+    }
+
+    // Se alguém ganhou 2 sets, é o vencedor
+    if (vitoriasJ1 >= 2) updates.vencedor = 'jogador1';
+    else if (vitoriasJ2 >= 2) updates.vencedor = 'jogador2';
+    else updates.vencedor = null; // Ainda em andamento ou empate (não deveria ocorrer em tênis)
+
+    setLoading(true);
     const { error } = await supabase
       .from('confrontos_jogadores')
       .update(updates)
       .eq('id', confId);
 
-    if (!error) fetchData();
+    if (!error) {
+      await fetchData();
+      alert('Placar salvo com sucesso!');
+    } else {
+      console.error('Erro ao salvar placar:', error);
+      alert('Erro ao salvar placar: ' + error.message);
+    }
+    setLoading(false);
   };
 
   const handleImportPDF = async () => {
@@ -707,9 +795,9 @@ export default function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           className="relative p-[2px] rounded-[34px] bg-gradient-to-r from-blue-500 via-purple-500 via-emerald-500 via-yellow-500 to-red-500 shadow-2xl shadow-blue-500/20"
         >
-          <div className="bg-[#111827] px-12 py-6 rounded-[32px] relative overflow-hidden">
+          <div className="bg-[#111827] px-4 py-4 md:px-12 md:py-6 rounded-[32px] relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-purple-600/10 opacity-50" />
-            <h1 className="relative text-3xl md:text-5xl font-black italic tracking-tighter text-white uppercase leading-none text-center">
+            <h1 className="relative text-2xl md:text-5xl font-black italic tracking-tighter text-white uppercase leading-none text-center">
               TORNEIO DE <span className="text-blue-500">CORES</span> 2026
             </h1>
           </div>
@@ -723,7 +811,7 @@ export default function Dashboard() {
             <motion.button
               whileTap={{ scale: 0.98 }}
               onClick={() => setActiveTab('dashboard')}
-              className={`flex-1 flex items-center justify-center gap-4 py-6 px-10 rounded-[32px] transition-all border-2 ${
+              className={`flex-1 flex items-center justify-center gap-2 md:gap-4 py-3 md:py-6 px-4 md:px-10 rounded-[32px] transition-all border-2 ${
                 activeTab === 'dashboard' 
                 ? 'bg-white border-white shadow-2xl shadow-white/10' 
                 : 'bg-white/5 border-white/5 hover:bg-white/10'
@@ -736,7 +824,7 @@ export default function Dashboard() {
             <motion.button
               whileTap={{ scale: 0.98 }}
               onClick={() => setActiveTab('jogos')}
-              className={`flex-1 flex items-center justify-center gap-4 py-6 px-10 rounded-[32px] transition-all border-2 ${
+              className={`flex-1 flex items-center justify-center gap-2 md:gap-4 py-3 md:py-6 px-4 md:px-10 rounded-[32px] transition-all border-2 ${
                 activeTab === 'jogos' 
                 ? 'bg-white border-white shadow-2xl shadow-white/10' 
                 : 'bg-white/5 border-white/5 hover:bg-white/10'
@@ -814,41 +902,48 @@ export default function Dashboard() {
               <div className="overflow-x-auto relative z-10">
                 <table className="w-full text-left border-separate border-spacing-y-2">
                   <thead>
-                    <tr className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em]">
-                      <th className="px-4 py-2">Pos</th>
-                      <th className="px-4 py-2">Equipe</th>
-                      <th className="px-4 py-2 text-center">P</th>
-                      <th className="px-4 py-2 text-center">V</th>
-                      <th className="px-4 py-2 text-center">E</th>
-                      <th className="px-4 py-2 text-center">D</th>
-                      <th className="px-4 py-2 text-center">SG</th>
-                      <th className="px-4 py-2 text-center">Cat F</th>
-                      <th className="px-4 py-2 text-center">Cat E</th>
+                    <tr className="text-[8px] md:text-[10px] font-black uppercase text-slate-500 tracking-[0.2em]">
+                      <th className="px-2 md:px-4 py-2">Pos</th>
+                      <th className="px-2 md:px-4 py-2">Equipe</th>
+                      <th className="px-1 md:px-4 py-2 text-center">P</th>
+                      <th className="px-1 md:px-4 py-2 text-center">V</th>
+                      <th className="px-1 md:px-4 py-2 text-center">E</th>
+                      <th className="px-1 md:px-4 py-2 text-center">D</th>
+                      <th className="px-1 md:px-4 py-2 text-center">SG</th>
+                      <th className="px-1 md:px-4 py-2 text-center">F</th>
+                      <th className="px-1 md:px-4 py-2 text-center">E</th>
+                      <th className="px-1 md:px-4 py-2 text-center">D</th>
+                      <th className="px-1 md:px-4 py-2 text-center">C</th>
+                      <th className="px-1 md:px-4 py-2 text-center">B</th>
+                      <th className="px-1 md:px-4 py-2 text-center">A</th>
                     </tr>
                   </thead>
                   <tbody>
                     {ranking.map((team, index) => (
                       <tr key={team.nome} className="bg-white/5 hover:bg-white/10 transition-colors group">
-                        <td className="px-4 py-4 rounded-l-2xl">
-                          <span className={`text-lg font-black italic ${index < 3 ? 'text-yellow-500' : 'text-slate-500'}`}>
+                        <td className="px-2 md:px-4 py-3 md:py-4 rounded-l-2xl">
+                          <span className={`text-sm md:text-lg font-black italic ${index < 3 ? 'text-yellow-500' : 'text-slate-500'}`}>
                             {index + 1}º
                           </span>
                         </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-3 h-3 rounded-full ${getTeamColor(team.nome).bg}`} />
-                            <span className="text-sm font-black uppercase tracking-widest text-white">{team.nome}</span>
+                        <td className="px-2 md:px-4 py-3 md:py-4">
+                          <div className="flex items-center gap-2 md:gap-3">
+                            <span className="text-[10px] md:text-sm font-black uppercase tracking-widest text-white">{team.nome}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-4 text-center">
-                          <span className="text-lg font-black text-blue-500">{team.pontos}</span>
+                        <td className="px-1 md:px-4 py-3 md:py-4 text-center">
+                          <span className="text-sm md:text-lg font-black text-blue-500">{team.pontos}</span>
                         </td>
-                        <td className="px-4 py-4 text-center text-slate-400 font-bold">{team.vitorias}</td>
-                        <td className="px-4 py-4 text-center text-slate-400 font-bold">{team.empates}</td>
-                        <td className="px-4 py-4 text-center text-slate-400 font-bold">{team.derrotas}</td>
-                        <td className="px-4 py-4 text-center text-emerald-500 font-bold">{team.setsGanhos}</td>
-                        <td className="px-4 py-4 text-center text-slate-400 font-bold">{team.vitoriasCategoria['F'] || 0}</td>
-                        <td className="px-4 py-4 text-center text-slate-400 font-bold rounded-r-2xl">{team.vitoriasCategoria['E'] || 0}</td>
+                        <td className="px-1 md:px-4 py-3 md:py-4 text-center text-slate-400 font-bold text-xs md:text-sm">{team.vitorias}</td>
+                        <td className="px-1 md:px-4 py-3 md:py-4 text-center text-slate-400 font-bold text-xs md:text-sm">{team.empates}</td>
+                        <td className="px-1 md:px-4 py-3 md:py-4 text-center text-slate-400 font-bold text-xs md:text-sm">{team.derrotas}</td>
+                        <td className="px-1 md:px-4 py-3 md:py-4 text-center text-emerald-500 font-bold text-xs md:text-sm">{team.setsGanhos}</td>
+                        <td className="px-1 md:px-4 py-3 md:py-4 text-center text-slate-400 font-bold text-[10px] md:text-sm">{team.vitoriasCategoria['F'] || 0}</td>
+                        <td className="px-1 md:px-4 py-3 md:py-4 text-center text-slate-400 font-bold text-[10px] md:text-sm">{team.vitoriasCategoria['E'] || 0}</td>
+                        <td className="px-1 md:px-4 py-3 md:py-4 text-center text-slate-400 font-bold text-[10px] md:text-sm">{team.vitoriasCategoria['D'] || 0}</td>
+                        <td className="px-1 md:px-4 py-3 md:py-4 text-center text-slate-400 font-bold text-[10px] md:text-sm">{team.vitoriasCategoria['C'] || 0}</td>
+                        <td className="px-1 md:px-4 py-3 md:py-4 text-center text-slate-400 font-bold text-[10px] md:text-sm">{team.vitoriasCategoria['B'] || 0}</td>
+                        <td className="px-1 md:px-4 py-3 md:py-4 text-center text-slate-400 font-bold text-[10px] md:text-sm rounded-r-2xl">{team.vitoriasCategoria['A'] || 0}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -862,15 +957,12 @@ export default function Dashboard() {
                 <h4 className="text-sm font-black uppercase tracking-[0.3em] text-blue-500">Pontuação nas Classificatórias</h4>
                 <ul className="space-y-4">
                   <li className="flex items-center gap-4 text-xs font-bold text-slate-400">
-                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
                     VITÓRIA: 3 PONTOS
                   </li>
                   <li className="flex items-center gap-4 text-xs font-bold text-slate-400">
-                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
                     EMPATE: 2 PONTOS
                   </li>
                   <li className="flex items-center gap-4 text-xs font-bold text-slate-400">
-                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
                     DERROTA: 1 PONTO
                   </li>
                 </ul>
@@ -904,23 +996,23 @@ export default function Dashboard() {
         ) : (
           <section className="space-y-8 max-w-5xl mx-auto">
             {/* Header do Dia - Centralizado e Compacto */}
-            <div className="text-center space-y-4 px-4 py-6 relative">
+            <div className="text-center space-y-2 md:space-y-4 px-4 py-4 md:py-6 relative">
               <div className="absolute inset-0 bg-gradient-to-b from-blue-600/5 to-transparent blur-3xl -z-10" />
-              <span className="text-[10px] font-black uppercase tracking-[0.5em] text-yellow-500/80">Confrontos do Dia</span>
+              <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.5em] text-yellow-500/80">Confrontos do Dia</span>
               
-              <div className="flex items-center justify-center gap-6 md:gap-12">
-                <div className="flex flex-col items-center gap-2">
-                  <h2 className={`text-5xl md:text-8xl font-black italic uppercase tracking-tighter drop-shadow-2xl ${getTeamColor(jogos.find(j => j.data === selectedDate)?.time_casa || '').text}`}>
+              <div className="flex items-center justify-center gap-4 md:gap-12">
+                <div className="flex flex-col items-center gap-1 md:gap-2">
+                  <h2 className={`text-3xl md:text-8xl font-black italic uppercase tracking-tighter drop-shadow-2xl ${getTeamColor(jogos.find(j => j.data === selectedDate)?.time_casa || '').text}`}>
                     {jogos.find(j => j.data === selectedDate)?.time_casa}
                   </h2>
                 </div>
                 
                 <div className="flex flex-col items-center">
-                  <span className="text-xl md:text-3xl font-black text-white/20 italic tracking-widest">VS</span>
+                  <span className="text-sm md:text-3xl font-black text-white/20 italic tracking-widest">VS</span>
                 </div>
 
-                <div className="flex flex-col items-center gap-2">
-                  <h2 className={`text-5xl md:text-8xl font-black italic uppercase tracking-tighter drop-shadow-2xl ${getTeamColor(jogos.find(j => j.data === selectedDate)?.time_visitante || '').text}`}>
+                <div className="flex flex-col items-center gap-1 md:gap-2">
+                  <h2 className={`text-3xl md:text-8xl font-black italic uppercase tracking-tighter drop-shadow-2xl ${getTeamColor(jogos.find(j => j.data === selectedDate)?.time_visitante || '').text}`}>
                     {jogos.find(j => j.data === selectedDate)?.time_visitante}
                   </h2>
                 </div>
@@ -940,32 +1032,30 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Header Stats - Centralizado, Compacto e com Frames Responsivos */}
-            <div className="bg-[#0d121f]/80 backdrop-blur-xl border border-white/5 rounded-[48px] p-8 md:p-12 shadow-2xl relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/10 blur-[120px] -mr-48 -mt-48 transition-all group-hover:bg-blue-600/20" />
-              <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-600/10 blur-[120px] -ml-48 -mb-48 transition-all group-hover:bg-purple-600/20" />
+            {/* Header Stats - Compact & Responsive */}
+            <div className="bg-[#0d121f]/80 backdrop-blur-xl border border-white/5 rounded-[24px] md:rounded-[32px] p-3 md:p-8 shadow-2xl relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 blur-[100px] -mr-32 -mt-32 transition-all group-hover:bg-blue-600/20" />
               
-              <div className="relative z-10 flex flex-col items-center gap-10">
-                <div className="w-full max-w-3xl space-y-6">
-                  {/* Linhas de Stats Centralizadas */}
+              <div className="relative z-10 flex flex-col items-center gap-4 md:gap-6">
+                <div className="w-full max-w-2xl space-y-2 md:space-y-3">
+                  {/* Main Stats */}
                   {[
                     { label: 'Vitórias', val1: stats.vitoriasCasa, val2: stats.vitoriasVisitante, color: 'text-emerald-500' },
                     { label: 'Sets Vencidos', val1: stats.setsCasa, val2: stats.setsVisitante, color: 'text-blue-500' },
-                    { label: 'Partidas Jogadas', val1: stats.partidasJogadas, val2: stats.partidasJogadas, color: 'text-white' },
                   ].map((stat, i) => (
-                    <div key={i} className="grid grid-cols-3 items-center group/row">
-                      <div className="text-right pr-8">
-                        <span className={`text-4xl md:text-5xl font-black italic tracking-tighter transition-transform group-hover/row:scale-110 inline-block ${stat.color}`}>
+                    <div key={i} className="grid grid-cols-3 items-center">
+                      <div className="text-right pr-2 md:pr-4">
+                        <span className={`text-xl md:text-4xl font-black italic tracking-tighter ${stat.color}`}>
                           {stat.val1}
                         </span>
                       </div>
                       <div className="text-center">
-                        <span className="text-[9px] md:text-[11px] font-black uppercase text-slate-500 tracking-[0.3em] whitespace-nowrap opacity-60 group-hover/row:opacity-100 transition-opacity">
+                        <span className="text-[7px] md:text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] whitespace-nowrap opacity-60">
                           {stat.label}
                         </span>
                       </div>
-                      <div className="text-left pl-8">
-                        <span className={`text-4xl md:text-5xl font-black italic tracking-tighter transition-transform group-hover/row:scale-110 inline-block ${stat.color}`}>
+                      <div className="text-left pl-2 md:pl-4">
+                        <span className={`text-xl md:text-4xl font-black italic tracking-tighter ${stat.color}`}>
                           {stat.val2}
                         </span>
                       </div>
@@ -973,14 +1063,27 @@ export default function Dashboard() {
                   ))}
                 </div>
 
-                <div className="flex flex-wrap items-center justify-center gap-4 w-full">
-                  <div className="bg-yellow-500/5 border border-yellow-500/10 px-8 py-3 rounded-full flex items-center gap-4 transition-all hover:bg-yellow-500/10">
-                    <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(234,179,8,0.5)]" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-yellow-500/80">{stats.jogosFaltando} Jogos Restantes</span>
+                {/* Categories Grid - Requested online update */}
+                <div className="w-full grid grid-cols-3 md:grid-cols-6 gap-2 pt-2 border-t border-white/5">
+                  {['F', 'E', 'D', 'C', 'B', 'A'].map(cat => (
+                    <div key={cat} className="bg-white/5 rounded-xl p-2 flex flex-col items-center border border-white/5">
+                      <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">{cat}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-black text-blue-500">{stats.catVitoriasCasa[cat]}</span>
+                        <span className="text-[8px] text-slate-700">|</span>
+                        <span className="text-xs font-black text-purple-500">{stats.catVitoriasVisitante[cat]}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex flex-wrap items-center justify-center gap-3 w-full pt-2">
+                  <div className="bg-yellow-500/5 border border-yellow-500/10 px-4 py-1.5 rounded-full flex items-center gap-2 transition-all">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-yellow-500/80">{stats.jogosFaltando} Jogos Restantes</span>
                   </div>
                   <button 
                     onClick={handleLogout} 
-                    className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-500/60 hover:text-rose-500 hover:bg-rose-500/10 transition-all flex items-center gap-3 bg-white/5 px-8 py-3 rounded-full border border-white/5"
+                    className="text-[8px] font-black uppercase tracking-widest text-rose-500/60 hover:text-rose-500 hover:bg-rose-500/10 transition-all flex items-center gap-2 bg-white/5 px-4 py-1.5 rounded-full border border-white/5"
                   >
                     <LogOut className="w-3 h-3" /> Sair
                   </button>
@@ -1005,155 +1108,176 @@ export default function Dashboard() {
                     {/* Glow Effect on Hover */}
                     <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-[40px] blur opacity-0 group-hover:opacity-100 transition duration-500" />
                     
-                    <div className="relative bg-[#0d121f]/95 backdrop-blur-3xl border border-white/5 rounded-[32px] overflow-hidden shadow-2xl">
-                      {/* Match Header - Mais Chamativo e Categoria Explícita */}
-                      <div className="bg-gradient-to-r from-slate-900 via-[#111827] to-slate-900 border-b border-white/5 py-4 flex flex-col items-center justify-center relative">
-                        <div className="flex flex-col items-center">
-                          <span className="text-[9px] font-black uppercase text-blue-500/60 tracking-[0.6em] mb-1">MATCH</span>
-                          <div className="relative">
-                            <span className="text-5xl font-black italic text-white leading-none tracking-tighter drop-shadow-[0_0_20px_rgba(255,255,255,0.4)]">
-                              {c.ordem}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {/* Categoria em Destaque Centralizado */}
-                        <div className="mt-3 flex items-center gap-3 px-6 py-1.5 bg-white/5 rounded-full border border-white/10">
-                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.3em]">CATEGORIA</span>
-                          <span className={`text-sm font-black uppercase tracking-tighter ${getTeamColor(jogo.time_casa).text}`}>
+                    <div className="relative bg-[#0d121f]/95 backdrop-blur-3xl border border-white/5 rounded-[32px] overflow-hidden">
+                      {/* Match Header - Compacto: Match e Categoria lado a lado */}
+                      <div className="bg-gradient-to-r from-slate-900 via-[#111827] to-slate-900 border-b border-white/5 py-1.5 px-4 flex items-center justify-between relative">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-black uppercase text-blue-500/60 tracking-widest">MATCH</span>
+                          <span className="text-xl font-black italic text-white tracking-tighter drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
+                            {c.ordem}
+                          </span>
+                          <div className="w-px h-3 bg-white/10 mx-1" />
+                          <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">CAT.</span>
+                          <span className={`text-xs font-black uppercase tracking-tighter ${getTeamColor(jogo.time_casa).text}`}>
                             {c.categoria}
                           </span>
                         </div>
 
-                        {/* Badge Lateral de Categoria (Opcional) */}
-                        <div className={`absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-2xl ${getTeamColor(jogo.time_casa).bg} flex items-center justify-center text-white font-black text-lg shadow-2xl ${getTeamColor(jogo.time_casa).shadow} hidden lg:flex`}>
-                          {c.categoria.charAt(0)}
-                        </div>
+                        {c.vencedor && (
+                          <div className="flex items-center">
+                            <span className="text-[7px] font-black text-emerald-500 uppercase bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                              Finalizado
+                            </span>
+                          </div>
+                        )}
                       </div>
 
-                      <div className="p-4 lg:p-8">
-                        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-6 lg:gap-10">
+                      <div className="p-3 md:p-4">
+                        <div className="flex flex-col gap-3">
                           
-                          {/* Time Casa (Esquerda) */}
-                          <div className="flex flex-col gap-3">
-                            <div className="space-y-2.5">
-                              <PlayerBox 
-                                name={c.jogador1} 
-                                category={c.categoria} 
-                                label="BOX 1"
-                                teamName={jogo.time_casa}
-                                isAdmin={profile?.role === 'admin'}
-                                onUpdate={(val) => updateJogador(c.id, 'jogador1', val)}
-                              />
-                              {c.jogador1_dupla && (
-                                <PlayerBox 
-                                  name={c.jogador1_dupla} 
-                                  category={c.categoria} 
-                                  label="BOX 2"
-                                  isDupla
-                                  teamName={jogo.time_casa}
-                                  isAdmin={profile?.role === 'admin'}
-                                  onUpdate={(val) => updateJogador(c.id, 'jogador1_dupla', val)}
-                                />
+                          {/* Linha Time Casa */}
+                          <div className={`flex items-center justify-between group p-2 rounded-2xl transition-all ${c.vencedor === jogo.time_casa ? 'bg-blue-500/10 border border-blue-500/20' : ''}`}>
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className="flex flex-col min-w-0">
+                                <div className="flex flex-col">
+                                  {(() => {
+                                    const parts = c.jogador1.trim().split(' ');
+                                    const first = parts.length > 1 ? parts.slice(0, -1).join(' ') : '';
+                                    const last = parts[parts.length - 1];
+                                    return (
+                                      <div className="flex flex-col leading-none">
+                                        <span className={`text-[9px] font-medium uppercase tracking-wider ${c.vencedor === jogo.time_casa ? 'text-white/60' : 'text-slate-500'}`}>{first}</span>
+                                        <span className="text-xs font-black text-yellow-400 uppercase tracking-tight">{last}</span>
+                                      </div>
+                                    );
+                                  })()}
+                                  {c.jogador1_dupla && (() => {
+                                    const parts = c.jogador1_dupla.trim().split(' ');
+                                    const first = parts.length > 1 ? parts.slice(0, -1).join(' ') : '';
+                                    const last = parts[parts.length - 1];
+                                    return (
+                                      <div className="flex flex-col leading-none mt-1">
+                                        <span className={`text-[9px] font-medium uppercase tracking-wider ${c.vencedor === jogo.time_casa ? 'text-white/60' : 'text-slate-500'}`}>{first}</span>
+                                        <span className="text-xs font-black text-yellow-400 uppercase tracking-tight">{last}</span>
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                                <div className="flex items-center gap-2 mt-1.5">
+                                  <span className={`text-[8px] font-black uppercase tracking-widest ${getTeamColor(jogo.time_casa).text}`}>
+                                    {jogo.time_casa}
+                                  </span>
+                                  {profile?.role === 'admin' && (
+                                    <button 
+                                      onClick={() => handleWO(c.id, 'jogador2')}
+                                      className="text-[7px] font-black uppercase text-rose-500/60 hover:text-rose-500 transition-colors"
+                                    >
+                                      [ W.O. CASA ]
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                              {c.vencedor === jogo.time_casa && (
+                                <Check size={14} className="text-emerald-500" strokeWidth={4} />
                               )}
                             </div>
                             
-                            {profile?.role === 'admin' && (
-                              <button 
-                                onClick={() => handleWO(c.id, 'jogador2')}
-                                className="w-full py-2 bg-rose-500/5 hover:bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-500 transition-all flex items-center justify-center gap-2 group/wo"
-                                title="Equipe Casa não compareceu - Vitória para Visitante"
-                              >
-                                <X size={14} className="group-hover/wo:rotate-90 transition-transform" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">W.O. (DERROTA CASA)</span>
-                              </button>
-                            )}
-                          </div>
-
-                          {/* Placar Central - Mais Compacto */}
-                          <div className="flex flex-col items-center justify-center bg-slate-900/60 rounded-[32px] p-6 border border-white/5 min-w-[220px] shadow-2xl">
-                            <div className="space-y-4 w-full">
+                            <div className="flex items-center gap-1 ml-4">
                               {[1, 2, 3].map(setNum => {
                                 const s1 = c[`set${setNum}_j1` as keyof ConfrontoJogador];
                                 const s2 = c[`set${setNum}_j2` as keyof ConfrontoJogador];
-                                const isVisible = s1 !== null || s2 !== null || profile?.role === 'admin';
-                                
-                                if (!isVisible) return null;
-
+                                const isWinner = s1 !== null && s2 !== null && Number(s1) > Number(s2);
                                 return (
-                                  <div key={setNum} className="flex items-center justify-between gap-4">
-                                    <span className="text-[8px] font-black text-slate-600 uppercase tracking-[0.4em] w-10">SET {setNum}</span>
-                                    <div className="flex items-center gap-2">
-                                      <input 
-                                        type="number" 
-                                        defaultValue={s1 ?? ''} 
-                                        disabled={profile?.role !== 'admin'}
-                                        id={`set${setNum}_j1_${c.id}`}
-                                        className={`w-12 h-12 bg-slate-950 border border-white/5 rounded-2xl text-center text-2xl font-black text-white focus:ring-1 transition-all disabled:opacity-100 ${getTeamColor(jogo.time_casa).border}`}
-                                      />
-                                      <div className="w-1.5 h-1.5 rounded-full bg-slate-800" />
-                                      <input 
-                                        type="number" 
-                                        defaultValue={s2 ?? ''} 
-                                        disabled={profile?.role !== 'admin'}
-                                        id={`set${setNum}_j2_${c.id}`}
-                                        className={`w-12 h-12 bg-slate-950 border border-white/5 rounded-2xl text-center text-2xl font-black text-white focus:ring-1 transition-all disabled:opacity-100 ${getTeamColor(jogo.time_visitante).border}`}
-                                      />
-                                    </div>
-                                    <div className="w-10" />
-                                  </div>
+                                  <input 
+                                    key={setNum}
+                                    type="number" 
+                                    value={s1 ?? ''} 
+                                    onChange={(e) => handleLocalScoreChange(c.id, `set${setNum}_j1`, e.target.value)}
+                                    disabled={profile?.role !== 'admin'}
+                                    className={`w-9 h-9 md:w-11 md:h-11 bg-slate-800/50 border border-white/5 rounded-xl text-center text-base md:text-lg font-black transition-all disabled:opacity-100 ${isWinner ? 'text-yellow-400 border-yellow-500/30' : 'text-white'} ${c.vencedor === jogo.time_casa ? 'bg-indigo-500/20 border-indigo-500/30' : ''}`}
+                                  />
                                 );
                               })}
-
-                              {profile?.role === 'admin' && (
-                                <div className="pt-4 flex justify-center">
-                                  <button 
-                                    onClick={() => saveMatchScores(c.id)}
-                                    className="flex items-center gap-2 px-8 py-2.5 bg-emerald-500/10 text-emerald-500 rounded-2xl hover:bg-emerald-500/20 transition-all border border-emerald-500/20 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/5"
-                                  >
-                                    <Save size={14} /> Salvar Placar
-                                  </button>
-                                </div>
-                              )}
                             </div>
                           </div>
 
-                          {/* Time Visitante (Direita) */}
-                          <div className="flex flex-col gap-3">
-                            <div className="space-y-2.5">
-                              <PlayerBox 
-                                name={c.jogador2} 
-                                category={c.categoria} 
-                                label="BOX 1"
-                                teamName={jogo.time_visitante}
-                                isAdmin={profile?.role === 'admin'}
-                                onUpdate={(val) => updateJogador(c.id, 'jogador2', val)}
-                              />
-                              {c.jogador2_dupla && (
-                                <PlayerBox 
-                                  name={c.jogador2_dupla} 
-                                  category={c.categoria} 
-                                  label="BOX 2"
-                                  isDupla
-                                  teamName={jogo.time_visitante}
-                                  isAdmin={profile?.role === 'admin'}
-                                  onUpdate={(val) => updateJogador(c.id, 'jogador2_dupla', val)}
-                                />
+                          {/* Linha Time Visitante */}
+                          <div className={`flex items-center justify-between group p-2 rounded-2xl transition-all ${c.vencedor === jogo.time_visitante ? 'bg-purple-500/10 border border-purple-500/20' : ''}`}>
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className="flex flex-col min-w-0">
+                                <div className="flex flex-col">
+                                  {(() => {
+                                    const parts = c.jogador2.trim().split(' ');
+                                    const first = parts.length > 1 ? parts.slice(0, -1).join(' ') : '';
+                                    const last = parts[parts.length - 1];
+                                    return (
+                                      <div className="flex flex-col leading-none">
+                                        <span className={`text-[9px] font-medium uppercase tracking-wider ${c.vencedor === jogo.time_visitante ? 'text-white/60' : 'text-slate-500'}`}>{first}</span>
+                                        <span className="text-xs font-black text-yellow-400 uppercase tracking-tight">{last}</span>
+                                      </div>
+                                    );
+                                  })()}
+                                  {c.jogador2_dupla && (() => {
+                                    const parts = c.jogador2_dupla.trim().split(' ');
+                                    const first = parts.length > 1 ? parts.slice(0, -1).join(' ') : '';
+                                    const last = parts[parts.length - 1];
+                                    return (
+                                      <div className="flex flex-col leading-none mt-1">
+                                        <span className={`text-[9px] font-medium uppercase tracking-wider ${c.vencedor === jogo.time_visitante ? 'text-white/60' : 'text-slate-500'}`}>{first}</span>
+                                        <span className="text-xs font-black text-yellow-400 uppercase tracking-tight">{last}</span>
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                                <div className="flex items-center gap-2 mt-1.5">
+                                  <span className={`text-[8px] font-black uppercase tracking-widest ${getTeamColor(jogo.time_visitante).text}`}>
+                                    {jogo.time_visitante}
+                                  </span>
+                                  {profile?.role === 'admin' && (
+                                    <button 
+                                      onClick={() => handleWO(c.id, 'jogador1')}
+                                      className="text-[7px] font-black uppercase text-rose-500/60 hover:text-rose-500 transition-colors"
+                                    >
+                                      [ W.O. VISIT ]
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                              {c.vencedor === jogo.time_visitante && (
+                                <Check size={14} className="text-emerald-500" strokeWidth={4} />
                               )}
                             </div>
                             
-                            {profile?.role === 'admin' && (
-                              <button 
-                                onClick={() => handleWO(c.id, 'jogador1')}
-                                className="w-full py-2 bg-rose-500/5 hover:bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-500 transition-all flex items-center justify-center gap-2 group/wo"
-                                title="Equipe Visitante não compareceu - Vitória para Casa"
-                              >
-                                <X size={14} className="group-hover/wo:rotate-90 transition-transform" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">W.O. (DERROTA VISITANTE)</span>
-                              </button>
-                            )}
+                            <div className="flex items-center gap-1 ml-4">
+                              {[1, 2, 3].map(setNum => {
+                                const s1 = c[`set${setNum}_j1` as keyof ConfrontoJogador];
+                                const s2 = c[`set${setNum}_j2` as keyof ConfrontoJogador];
+                                const isWinner = s1 !== null && s2 !== null && Number(s2) > Number(s1);
+                                return (
+                                  <input 
+                                    key={setNum}
+                                    type="number" 
+                                    value={s2 ?? ''} 
+                                    onChange={(e) => handleLocalScoreChange(c.id, `set${setNum}_j2`, e.target.value)}
+                                    disabled={profile?.role !== 'admin'}
+                                    className={`w-9 h-9 md:w-11 md:h-11 bg-slate-800/50 border border-white/5 rounded-xl text-center text-base md:text-lg font-black transition-all disabled:opacity-100 ${isWinner ? 'text-yellow-400 border-yellow-500/30' : 'text-white'} ${c.vencedor === jogo.time_visitante ? 'bg-indigo-500/20 border-indigo-500/30' : ''}`}
+                                  />
+                                );
+                              })}
+                            </div>
                           </div>
 
+                          {/* Ações (Rodapé do Card) */}
+                          {profile?.role === 'admin' && (
+                            <div className="flex items-center justify-end pt-2 mt-1 border-t border-white/5">
+                              <button 
+                                onClick={() => saveMatchScores(c.id)}
+                                className="px-6 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-500 text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 rounded-xl"
+                              >
+                                <Save size={12} /> Salvar Placar
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

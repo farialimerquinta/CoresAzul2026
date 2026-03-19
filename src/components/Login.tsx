@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { LogIn, Phone, Lock, Loader2 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion'; // Ajustado de 'motion/react' para 'framer-motion' (padrão)
 
 export default function Login() {
   const [celular, setCelular] = useState('');
@@ -17,49 +17,47 @@ export default function Login() {
     setError(null);
 
     try {
-      // Limpa caracteres não numéricos do celular para comparação
-      const celularLimpo = celular.replace(/\D/g, '');
-      const senhaLimpa = (senha || '').trim();
-      
-      console.log('Iniciando tentativa de login...');
-      console.log('Celular (limpo):', celularLimpo);
+      const celularLimpo = celular.trim();
+      const celularNumerico = celular.replace(/\D/g, '');
+      const senhaLimpa = senha.trim();
+
+      // Monta o filtro OR corretamente para o Supabase SDK
+      // Exemplo: "celular.ilike.admin,celular.eq.admin"
+      let orFilter = `celular.ilike.${celularLimpo}`;
+      if (celularNumerico && celularNumerico !== celularLimpo) {
+        orFilter += `,celular.eq.${celularNumerico}`;
+      }
+
+      console.log('Tentando login com filtro:', orFilter);
 
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('celular', celularLimpo)
+        .or(orFilter)
         .eq('senha', senhaLimpa)
-        .single();
+        .maybeSingle(); // Retorna null se não encontrar, em vez de estourar erro
 
       if (profileError) {
-        console.error('Erro Supabase no login:', profileError);
-        if (profileError.code === 'PGRST116') {
-          throw new Error('Celular ou senha incorretos.');
-        }
-        throw new Error(`Erro no banco de dados: ${profileError.message}`);
+        console.error('Erro na query:', profileError);
+        throw new Error('Erro ao consultar banco de dados.');
       }
 
       if (!profile) {
-        throw new Error('Dados do perfil não retornados.');
+        console.warn('Nenhum usuário encontrado com esses dados.');
+        throw new Error('Celular ou senha incorretos.');
       }
 
-      console.log('Login bem-sucedido para:', profile.celular);
+      console.log('Login autorizado:', profile.celular);
 
-      // Salva o perfil no localStorage para manter a sessão
+      // Persistência da sessão manual
       localStorage.setItem('torneio_user', JSON.stringify(profile));
       
-      // Dispara evento para o App.tsx atualizar a sessão instantaneamente
+      // Notifica o restante da aplicação
       window.dispatchEvent(new Event('login-success'));
       
       navigate('/dashboard');
     } catch (err: any) {
-      if (err.message?.includes('PGRST116')) {
-        setError('Celular ou senha incorretos.');
-      } else if (err.message?.includes('policy')) {
-        setError('Erro de permissão (RLS). Verifique se o acesso à tabela profiles está liberado.');
-      } else {
-        setError(err.message || 'Erro ao fazer login.');
-      }
+      setError(err.message || 'Erro inesperado ao fazer login.');
     } finally {
       setLoading(false);
     }
@@ -82,12 +80,12 @@ export default function Login() {
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Celular</label>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Usuário ou Celular</label>
             <div className="relative">
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
               <input
                 type="text"
-                placeholder="(00) 00000-0000"
+                placeholder="Digite seu login"
                 className="w-full bg-slate-800 border border-white/5 rounded-xl py-3 pl-10 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                 value={celular}
                 onChange={(e) => setCelular(e.target.value)}
