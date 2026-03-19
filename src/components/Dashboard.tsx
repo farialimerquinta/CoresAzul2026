@@ -77,6 +77,7 @@ export default function Dashboard() {
   const [jogos, setJogos] = useState<Jogo[]>([]);
   const [classificacao, setClassificacao] = useState<Classificacao[]>([]);
   const [confrontos, setConfrontos] = useState<ConfrontoJogador[]>([]);
+  const [allConfrontos, setAllConfrontos] = useState<ConfrontoJogador[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [storageError, setStorageError] = useState<string | null>(null);
@@ -88,6 +89,97 @@ export default function Dashboard() {
   const [selectedTeam, setSelectedTeam] = useState<string>('');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const navigate = useNavigate();
+
+  const ranking = useMemo(() => {
+    const teams = ['Azul', 'Roxo', 'Verde', 'Amarelo', 'Laranja', 'Vermelho'];
+    const stats: Record<string, any> = {};
+    
+    teams.forEach(t => {
+      stats[t] = {
+        nome: t,
+        pontos: 0,
+        vitorias: 0,
+        empates: 0,
+        derrotas: 0,
+        setsGanhos: 0,
+        vitoriasCategoria: { 'F': 0, 'E': 0, 'D': 0, 'C': 0, 'B': 0, 'A': 0 }
+      };
+    });
+
+    jogos.forEach(jogo => {
+      const jogoConfrontos = allConfrontos.filter(c => c.jogo_id === jogo.id);
+      let vitoriasCasa = 0;
+      let vitoriasVisitante = 0;
+
+      jogoConfrontos.forEach(c => {
+        let setsGanhosJ1 = 0;
+        let setsGanhosJ2 = 0;
+
+        if (c.set1_j1 !== null && c.set1_j2 !== null) {
+          if (c.set1_j1 > c.set1_j2) setsGanhosJ1++;
+          else if (c.set1_j2 > c.set1_j1) setsGanhosJ2++;
+        }
+        if (c.set2_j1 !== null && c.set2_j2 !== null) {
+          if (c.set2_j1 > c.set2_j2) setsGanhosJ1++;
+          else if (c.set2_j2 > c.set2_j1) setsGanhosJ2++;
+        }
+        if (c.set3_j1 !== null && c.set3_j2 !== null) {
+          if (c.set3_j1 > c.set3_j2) setsGanhosJ1++;
+          else if (c.set3_j2 > c.set3_j1) setsGanhosJ2++;
+        }
+
+        stats[jogo.time_casa].setsGanhos += setsGanhosJ1;
+        stats[jogo.time_visitante].setsGanhos += setsGanhosJ2;
+
+        const vencedor = c.wo_vencedor || c.vencedor;
+        if (vencedor === 'jogador1') {
+          vitoriasCasa++;
+          const cat = c.categoria?.toUpperCase();
+          if (stats[jogo.time_casa].vitoriasCategoria[cat] !== undefined) {
+            stats[jogo.time_casa].vitoriasCategoria[cat]++;
+          }
+        } else if (vencedor === 'jogador2') {
+          vitoriasVisitante++;
+          const cat = c.categoria?.toUpperCase();
+          if (stats[jogo.time_visitante].vitoriasCategoria[cat] !== undefined) {
+            stats[jogo.time_visitante].vitoriasCategoria[cat]++;
+          }
+        }
+      });
+
+      // Se o jogo tem confrontos registrados, calcula o resultado do confronto (dia)
+      if (jogoConfrontos.length > 0) {
+        if (vitoriasCasa > vitoriasVisitante) {
+          stats[jogo.time_casa].pontos += 3;
+          stats[jogo.time_casa].vitorias += 1;
+          stats[jogo.time_visitante].pontos += 1;
+          stats[jogo.time_visitante].derrotas += 1;
+        } else if (vitoriasVisitante > vitoriasCasa) {
+          stats[jogo.time_visitante].pontos += 3;
+          stats[jogo.time_visitante].vitorias += 1;
+          stats[jogo.time_casa].pontos += 1;
+          stats[jogo.time_casa].derrotas += 1;
+        } else {
+          stats[jogo.time_casa].pontos += 2;
+          stats[jogo.time_casa].empates += 1;
+          stats[jogo.time_visitante].pontos += 2;
+          stats[jogo.time_visitante].empates += 1;
+        }
+      }
+    });
+
+    return Object.values(stats).sort((a, b) => {
+      if (b.pontos !== a.pontos) return b.pontos - a.pontos;
+      if (b.vitorias !== a.vitorias) return b.vitorias - a.vitorias;
+      if (b.setsGanhos !== a.setsGanhos) return b.setsGanhos - a.setsGanhos;
+      if (b.vitoriasCategoria['F'] !== a.vitoriasCategoria['F']) return b.vitoriasCategoria['F'] - a.vitoriasCategoria['F'];
+      if (b.vitoriasCategoria['E'] !== a.vitoriasCategoria['E']) return b.vitoriasCategoria['E'] - a.vitoriasCategoria['E'];
+      if (b.vitoriasCategoria['D'] !== a.vitoriasCategoria['D']) return b.vitoriasCategoria['D'] - a.vitoriasCategoria['D'];
+      if (b.vitoriasCategoria['C'] !== a.vitoriasCategoria['C']) return b.vitoriasCategoria['C'] - a.vitoriasCategoria['C'];
+      if (b.vitoriasCategoria['B'] !== a.vitoriasCategoria['B']) return b.vitoriasCategoria['B'] - a.vitoriasCategoria['B'];
+      return b.vitoriasCategoria['A'] - a.vitoriasCategoria['A'];
+    });
+  }, [jogos, allConfrontos]);
 
   const stats = useMemo(() => {
     const currentConfrontos = confrontos || [];
@@ -188,15 +280,17 @@ export default function Dashboard() {
       setJogos(jogosData);
       const currentJogo = jogosData.find(j => j.data === selectedDate);
       
-      const [classRes, confRes] = await Promise.all([
+      const [classRes, confRes, allConfRes] = await Promise.all([
         supabase.from('classificacao').select('*').order('pontos', { ascending: false }),
         currentJogo 
           ? supabase.from('confrontos_jogadores').select('*').eq('jogo_id', currentJogo.id).order('ordem', { ascending: true })
-          : Promise.resolve({ data: [] })
+          : Promise.resolve({ data: [] }),
+        supabase.from('confrontos_jogadores').select('*')
       ]);
 
       if (classRes.data) setClassificacao(classRes.data);
       if (confRes.data) setConfrontos(confRes.data);
+      if (allConfRes.data) setAllConfrontos(allConfRes.data);
     }
     setLoading(false);
   }, [selectedDate]);
@@ -702,74 +796,104 @@ export default function Dashboard() {
 
         {activeTab === 'dashboard' ? (
           <section className="space-y-8">
-            {/* Header Stats - Now inside Dashboard Tab */}
-            <div className="bg-[#111827] border border-white/5 rounded-[40px] p-10 shadow-2xl relative overflow-hidden">
+            {/* Ranking Table */}
+            <div className="bg-[#111827] border border-white/5 rounded-[40px] p-6 md:p-10 shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 blur-[100px] -mr-32 -mt-32" />
-              <div className="flex flex-wrap items-center justify-between gap-12 relative z-10">
-                <div className="flex-1 max-w-2xl mx-auto space-y-4">
-                  <div className="grid grid-cols-3 items-center text-center">
-                    <span className="text-4xl font-black text-emerald-500 italic">{stats.vitoriasCasa}</span>
-                    <span className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em]">Vitórias</span>
-                    <span className="text-4xl font-black text-emerald-500 italic">{stats.vitoriasVisitante}</span>
+              
+              <div className="flex items-center justify-between mb-8 relative z-10">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-blue-500/10 text-blue-500 rounded-2xl">
+                    <Trophy className="w-6 h-6" />
                   </div>
-                  <div className="grid grid-cols-3 items-center text-center">
-                    <span className="text-4xl font-black text-blue-500 italic">{stats.setsCasa}</span>
-                    <span className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em]">Sets Vencidos</span>
-                    <span className="text-4xl font-black text-blue-500 italic">{stats.setsVisitante}</span>
-                  </div>
-                  <div className="grid grid-cols-3 items-center text-center">
-                    <span className="text-4xl font-black text-white italic">{stats.partidasJogadas}</span>
-                    <span className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em]">Partidas Jogadas</span>
-                    <span className="text-4xl font-black text-white italic">{stats.partidasJogadas}</span>
-                  </div>
+                  <h3 className="text-xl font-black uppercase tracking-widest text-white italic">Classificação Geral</h3>
                 </div>
-                <div className="flex flex-col md:flex-row items-center gap-6">
-                  <div className="bg-yellow-500/10 border border-yellow-500/20 px-8 py-4 rounded-3xl flex items-center gap-4">
-                    <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse shadow-[0_0_15px_rgba(234,179,8,0.5)]" />
-                    <span className="text-sm font-black uppercase tracking-[0.2em] text-yellow-500">{stats.jogosFaltando} Jogos Restantes</span>
-                  </div>
-                  <button onClick={handleLogout} className="text-xs font-black uppercase tracking-[0.2em] text-rose-500 hover:bg-rose-500/10 transition-all flex items-center gap-3 bg-white/5 px-8 py-4 rounded-3xl border border-white/5">
-                    <LogOut className="w-4 h-4" /> Sair
-                  </button>
-                </div>
+                <button onClick={handleLogout} className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-500 hover:bg-rose-500/10 transition-all flex items-center gap-3 bg-white/5 px-6 py-3 rounded-full border border-white/5">
+                  <LogOut className="w-3 h-3" /> Sair
+                </button>
+              </div>
+
+              <div className="overflow-x-auto relative z-10">
+                <table className="w-full text-left border-separate border-spacing-y-2">
+                  <thead>
+                    <tr className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em]">
+                      <th className="px-4 py-2">Pos</th>
+                      <th className="px-4 py-2">Equipe</th>
+                      <th className="px-4 py-2 text-center">P</th>
+                      <th className="px-4 py-2 text-center">V</th>
+                      <th className="px-4 py-2 text-center">E</th>
+                      <th className="px-4 py-2 text-center">D</th>
+                      <th className="px-4 py-2 text-center">SG</th>
+                      <th className="px-4 py-2 text-center">Cat F</th>
+                      <th className="px-4 py-2 text-center">Cat E</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ranking.map((team, index) => (
+                      <tr key={team.nome} className="bg-white/5 hover:bg-white/10 transition-colors group">
+                        <td className="px-4 py-4 rounded-l-2xl">
+                          <span className={`text-lg font-black italic ${index < 3 ? 'text-yellow-500' : 'text-slate-500'}`}>
+                            {index + 1}º
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-3 h-3 rounded-full ${getTeamColor(team.nome).bg}`} />
+                            <span className="text-sm font-black uppercase tracking-widest text-white">{team.nome}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <span className="text-lg font-black text-blue-500">{team.pontos}</span>
+                        </td>
+                        <td className="px-4 py-4 text-center text-slate-400 font-bold">{team.vitorias}</td>
+                        <td className="px-4 py-4 text-center text-slate-400 font-bold">{team.empates}</td>
+                        <td className="px-4 py-4 text-center text-slate-400 font-bold">{team.derrotas}</td>
+                        <td className="px-4 py-4 text-center text-emerald-500 font-bold">{team.setsGanhos}</td>
+                        <td className="px-4 py-4 text-center text-slate-400 font-bold">{team.vitoriasCategoria['F'] || 0}</td>
+                        <td className="px-4 py-4 text-center text-slate-400 font-bold rounded-r-2xl">{team.vitoriasCategoria['E'] || 0}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
 
+            {/* Regras Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="bg-[#111827] border border-white/5 rounded-[40px] p-10 space-y-8">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-blue-500/10 text-blue-500 rounded-2xl">
-                  <LayoutDashboard className="w-6 h-6" />
-                </div>
-                <h3 className="text-xl font-black uppercase tracking-widest text-white italic">Resumo de Performance</h3>
+              <div className="bg-[#111827] border border-white/5 rounded-[40px] p-10 space-y-6">
+                <h4 className="text-sm font-black uppercase tracking-[0.3em] text-blue-500">Pontuação nas Classificatórias</h4>
+                <ul className="space-y-4">
+                  <li className="flex items-center gap-4 text-xs font-bold text-slate-400">
+                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                    VITÓRIA: 3 PONTOS
+                  </li>
+                  <li className="flex items-center gap-4 text-xs font-bold text-slate-400">
+                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                    EMPATE: 2 PONTOS
+                  </li>
+                  <li className="flex items-center gap-4 text-xs font-bold text-slate-400">
+                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                    DERROTA: 1 PONTO
+                  </li>
+                </ul>
               </div>
-              <div className="grid grid-cols-2 gap-6">
-                <div className="bg-white/5 p-8 rounded-[32px] border border-white/5 space-y-2">
-                  <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest block">Aproveitamento</span>
-                  <span className="text-4xl font-black text-white italic">{Math.round((stats.vitoriasCasa / (stats.vitoriasCasa + stats.vitoriasVisitante || 1)) * 100)}%</span>
-                </div>
-                <div className="bg-white/5 p-8 rounded-[32px] border border-white/5 space-y-2">
-                  <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest block">Saldo de Sets</span>
-                  <span className="text-4xl font-black text-white italic">{stats.setsCasa - stats.setsVisitante}</span>
-                </div>
-              </div>
-            </div>
 
-            <div className="bg-[#111827] border border-white/5 rounded-[40px] p-10 flex flex-col justify-center items-center text-center space-y-6">
-              <div className="w-24 h-24 bg-blue-600/20 rounded-full flex items-center justify-center text-blue-500 shadow-inner">
-                <Users className="w-12 h-12" />
+              <div className="bg-[#111827] border border-white/5 rounded-[40px] p-10 space-y-6">
+                <h4 className="text-sm font-black uppercase tracking-[0.3em] text-purple-500">Critérios de Desempate</h4>
+                <ul className="space-y-4">
+                  <li className="flex items-center gap-4 text-xs font-bold text-slate-400">
+                    <span className="text-purple-500">1.</span> PONTOS GANHOS
+                  </li>
+                  <li className="flex items-center gap-4 text-xs font-bold text-slate-400">
+                    <span className="text-purple-500">2.</span> VITÓRIAS (JOGOS GANHOS)
+                  </li>
+                  <li className="flex items-center gap-4 text-xs font-bold text-slate-400">
+                    <span className="text-purple-500">3.</span> QTD. DE SETS GANHOS
+                  </li>
+                  <li className="flex items-center gap-4 text-xs font-bold text-slate-400">
+                    <span className="text-purple-500">4.</span> VITÓRIAS CATEGORIA F, E, D...
+                  </li>
+                </ul>
               </div>
-              <div className="space-y-2">
-                <h3 className="text-2xl font-black uppercase tracking-widest text-white italic">Próximo Desafio</h3>
-                <p className="text-slate-400 font-medium max-w-[250px]">Prepare-se para o próximo confronto no dia {formatDate(selectedDate)}</p>
-              </div>
-              <button 
-                onClick={() => setActiveTab('jogos')}
-                className="bg-white/5 hover:bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.2em] px-8 py-4 rounded-full transition-all border border-white/5"
-              >
-                Ver Agenda Completa
-              </button>
-            </div>
             </div>
           </section>
         ) : (
