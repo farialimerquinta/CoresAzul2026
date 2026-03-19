@@ -147,8 +147,8 @@ export default function Dashboard() {
         }
       });
 
-      // Se o jogo tem confrontos registrados, calcula o resultado do confronto (dia)
-      if (jogoConfrontos.length > 0) {
+      // Se o jogo está finalizado, calcula o resultado do confronto (dia)
+      if (jogo.finalizado) {
         if (vitoriasCasa > vitoriasVisitante) {
           stats[jogo.time_casa].pontos += 3;
           stats[jogo.time_casa].vitorias += 1;
@@ -171,13 +171,10 @@ export default function Dashboard() {
     return Object.values(stats).sort((a, b) => {
       if (b.pontos !== a.pontos) return b.pontos - a.pontos;
       if (b.vitorias !== a.vitorias) return b.vitorias - a.vitorias;
+      if (a.derrotas !== b.derrotas) return a.derrotas - b.derrotas; // Menos derrotas primeiro
       if (b.setsGanhos !== a.setsGanhos) return b.setsGanhos - a.setsGanhos;
       if (b.vitoriasCategoria['F'] !== a.vitoriasCategoria['F']) return b.vitoriasCategoria['F'] - a.vitoriasCategoria['F'];
-      if (b.vitoriasCategoria['E'] !== a.vitoriasCategoria['E']) return b.vitoriasCategoria['E'] - a.vitoriasCategoria['E'];
-      if (b.vitoriasCategoria['D'] !== a.vitoriasCategoria['D']) return b.vitoriasCategoria['D'] - a.vitoriasCategoria['D'];
-      if (b.vitoriasCategoria['C'] !== a.vitoriasCategoria['C']) return b.vitoriasCategoria['C'] - a.vitoriasCategoria['C'];
-      if (b.vitoriasCategoria['B'] !== a.vitoriasCategoria['B']) return b.vitoriasCategoria['B'] - a.vitoriasCategoria['B'];
-      return b.vitoriasCategoria['A'] - a.vitoriasCategoria['A'];
+      return b.vitoriasCategoria['E'] - a.vitoriasCategoria['E'];
     });
   }, [jogos, allConfrontos]);
 
@@ -884,13 +881,19 @@ export default function Dashboard() {
                     <span className="text-purple-500">1.</span> PONTOS GANHOS
                   </li>
                   <li className="flex items-center gap-4 text-xs font-bold text-slate-400">
-                    <span className="text-purple-500">2.</span> VITÓRIAS (JOGOS GANHOS)
+                    <span className="text-purple-500">2.</span> VITÓRIAS (CONFRONTOS GANHOS)
                   </li>
                   <li className="flex items-center gap-4 text-xs font-bold text-slate-400">
-                    <span className="text-purple-500">3.</span> QTD. DE SETS GANHOS
+                    <span className="text-purple-500">3.</span> MENOS DERROTAS
                   </li>
                   <li className="flex items-center gap-4 text-xs font-bold text-slate-400">
-                    <span className="text-purple-500">4.</span> VITÓRIAS CATEGORIA F, E, D...
+                    <span className="text-purple-500">4.</span> QTD. DE SETS GANHOS
+                  </li>
+                  <li className="flex items-center gap-4 text-xs font-bold text-slate-400">
+                    <span className="text-purple-500">5.</span> VITÓRIAS CATEGORIA F
+                  </li>
+                  <li className="flex items-center gap-4 text-xs font-bold text-slate-400">
+                    <span className="text-purple-500">6.</span> VITÓRIAS CATEGORIA E
                   </li>
                 </ul>
               </div>
