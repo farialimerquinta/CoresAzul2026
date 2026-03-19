@@ -705,12 +705,14 @@ export default function Dashboard() {
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-[#111827] px-12 py-6 rounded-[32px] border border-white/5 shadow-2xl relative overflow-hidden"
+          className="relative p-[2px] rounded-[34px] bg-gradient-to-r from-blue-500 via-purple-500 via-emerald-500 via-yellow-500 to-red-500 shadow-2xl shadow-blue-500/20"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-purple-600/10 opacity-50" />
-          <h1 className="relative text-3xl md:text-5xl font-black italic tracking-tighter text-white uppercase leading-none text-center">
-            TORNEIO DE <span className="text-blue-500">CORES</span>
-          </h1>
+          <div className="bg-[#111827] px-12 py-6 rounded-[32px] relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-purple-600/10 opacity-50" />
+            <h1 className="relative text-3xl md:text-5xl font-black italic tracking-tighter text-white uppercase leading-none text-center">
+              TORNEIO DE <span className="text-blue-500">CORES</span> 2026
+            </h1>
+          </div>
         </motion.div>
       </section>
 
