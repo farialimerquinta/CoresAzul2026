@@ -624,77 +624,53 @@ export default function Dashboard() {
       </section>
 
       <main className="max-w-6xl mx-auto px-4 space-y-6 relative z-20">
-        {/* Main Navigation - Compact & Professional */}
-        <section className="flex flex-col md:flex-row gap-3">
-          <div className="flex flex-1 gap-3">
+        {/* Main Navigation - Larger & Professional */}
+        <section className="flex flex-col gap-4">
+          <div className="flex gap-4">
             <motion.button
               whileTap={{ scale: 0.98 }}
               onClick={() => setActiveTab('dashboard')}
-              className={`flex-1 flex items-center justify-center gap-3 py-3 px-6 rounded-2xl transition-all border ${
+              className={`flex-1 flex items-center justify-center gap-4 py-6 px-10 rounded-[32px] transition-all border-2 ${
                 activeTab === 'dashboard' 
-                ? 'bg-white border-white shadow-lg shadow-white/5' 
+                ? 'bg-white border-white shadow-2xl shadow-white/10' 
                 : 'bg-white/5 border-white/5 hover:bg-white/10'
               }`}
             >
-              <LayoutDashboard className={`w-4 h-4 ${activeTab === 'dashboard' ? 'text-blue-600' : 'text-slate-400'}`} />
-              <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'dashboard' ? 'text-slate-900' : 'text-slate-400'}`}>Dashboard</span>
+              <LayoutDashboard className={`w-6 h-6 ${activeTab === 'dashboard' ? 'text-blue-600' : 'text-slate-400'}`} />
+              <span className={`text-sm font-black uppercase tracking-[0.3em] ${activeTab === 'dashboard' ? 'text-slate-900' : 'text-slate-400'}`}>Pontuação Geral</span>
             </motion.button>
 
             <motion.button
               whileTap={{ scale: 0.98 }}
               onClick={() => setActiveTab('jogos')}
-              className={`flex-1 flex items-center justify-center gap-3 py-3 px-6 rounded-2xl transition-all border ${
+              className={`flex-1 flex items-center justify-center gap-4 py-6 px-10 rounded-[32px] transition-all border-2 ${
                 activeTab === 'jogos' 
-                ? 'bg-white border-white shadow-lg shadow-white/5' 
+                ? 'bg-white border-white shadow-2xl shadow-white/10' 
                 : 'bg-white/5 border-white/5 hover:bg-white/10'
               }`}
             >
-              <Trophy className={`w-4 h-4 ${activeTab === 'jogos' ? 'text-purple-600' : 'text-slate-400'}`} />
-              <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'jogos' ? 'text-slate-900' : 'text-slate-400'}`}>Jogos</span>
+              <Trophy className={`w-6 h-6 ${activeTab === 'jogos' ? 'text-purple-600' : 'text-slate-400'}`} />
+              <span className={`text-sm font-black uppercase tracking-[0.3em] ${activeTab === 'jogos' ? 'text-slate-900' : 'text-slate-400'}`}>Jogos</span>
             </motion.button>
           </div>
 
-          <div className="flex flex-1 gap-3">
-            {profile?.role === 'admin' && (
-              <div className="flex flex-1 gap-3">
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setShowUploadModal(true)}
-                  className="flex-1 flex items-center justify-center gap-3 py-3 px-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all group"
+          {activeTab === 'jogos' && (
+            <div className="flex gap-2 p-2 bg-white/5 border border-white/5 rounded-[32px]">
+              {dates.map(date => (
+                <button 
+                  key={date}
+                  onClick={() => setSelectedDate(date)}
+                  className={`flex-1 py-5 rounded-[24px] text-xs font-black uppercase tracking-[0.2em] transition-all ${
+                    selectedDate === date 
+                    ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/20' 
+                    : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                  }`}
                 >
-                  <PlusCircle className="w-4 h-4 text-emerald-500 group-hover:rotate-90 transition-transform" />
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500">Upload Súmulas</span>
-                </motion.button>
-
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleImportPDF}
-                  className="flex-1 flex items-center justify-center gap-3 py-3 px-6 rounded-2xl bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-all group"
-                >
-                  <FileText className="w-4 h-4 text-blue-500" />
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500">Importar PDF</span>
-                </motion.button>
-              </div>
-            )}
-
-            {activeTab === 'jogos' && (
-              <div className="flex-[2] flex gap-1 p-1 bg-white/5 border border-white/5 rounded-2xl">
-                {dates.map(date => (
-                  <button 
-                    key={date}
-                    onClick={() => setSelectedDate(date)}
-                    className={`flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all ${
-                      selectedDate === date 
-                      ? 'bg-blue-600 text-white shadow-md' 
-                      : 'text-slate-500 hover:text-slate-300'
-                    }`}
-                  >
-                    {formatDate(date)}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+                  {formatDate(date)}
+                </button>
+              ))}
+            </div>
+          )}
         </section>
 
         {storageError && !dismissStorageError && profile?.role === 'admin' && (

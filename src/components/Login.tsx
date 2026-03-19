@@ -19,18 +19,31 @@ export default function Login() {
     try {
       // Limpa caracteres não numéricos do celular para comparação
       const celularLimpo = celular.replace(/\D/g, '');
+      const senhaLimpa = (senha || '').trim();
+      
+      console.log('Iniciando tentativa de login...');
+      console.log('Celular (limpo):', celularLimpo);
 
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('celular', celularLimpo)
-        .eq('senha', senha)
+        .eq('senha', senhaLimpa)
         .single();
 
-      if (profileError || !profile) {
-        console.error('Erro no login:', profileError);
-        throw new Error('Celular ou senha incorretos.');
+      if (profileError) {
+        console.error('Erro Supabase no login:', profileError);
+        if (profileError.code === 'PGRST116') {
+          throw new Error('Celular ou senha incorretos.');
+        }
+        throw new Error(`Erro no banco de dados: ${profileError.message}`);
       }
+
+      if (!profile) {
+        throw new Error('Dados do perfil não retornados.');
+      }
+
+      console.log('Login bem-sucedido para:', profile.celular);
 
       // Salva o perfil no localStorage para manter a sessão
       localStorage.setItem('torneio_user', JSON.stringify(profile));
@@ -41,9 +54,9 @@ export default function Login() {
       navigate('/dashboard');
     } catch (err: any) {
       if (err.message?.includes('PGRST116')) {
-        setError('Usuário não encontrado ou senha incorreta.');
+        setError('Celular ou senha incorretos.');
       } else if (err.message?.includes('policy')) {
-        setError('Erro de permissão no banco de dados. Verifique as políticas RLS.');
+        setError('Erro de permissão (RLS). Verifique se o acesso à tabela profiles está liberado.');
       } else {
         setError(err.message || 'Erro ao fazer login.');
       }
